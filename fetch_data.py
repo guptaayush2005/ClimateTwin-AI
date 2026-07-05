@@ -7,10 +7,10 @@ from datetime import datetime, timedelta
 # State coordinates load karo
 states = pd.read_csv("data/state_coordinates.csv")
 
-# NASA data usually 1 day delay se update hota hai
+# NASA data usually 2-3 din delay se update hota hai
 today = datetime.now()
-yesterday = today - timedelta(days=1)
-date = yesterday.strftime("%Y%m%d")
+latest_date = today - timedelta(days=3)
+date = latest_date.strftime("%Y%m%d")
 
 all_data = []
 
@@ -41,6 +41,17 @@ for _, row in states.iterrows():
         rainfall = list(params["PRECTOTCORR"].values())[0]
         humidity = list(params["RH2M"].values())[0]
 
+        # NASA missing data check
+        if (
+            temperature == -999
+            or rainfall == -999
+            or humidity == -999
+        ):
+            print(
+                f"⚠️ Skipping {state} because NASA returned missing data."
+            )
+            continue
+
         all_data.append({
             "State": state,
             "Temperature": temperature,
@@ -57,6 +68,7 @@ for _, row in states.iterrows():
 
 # Create DataFrame
 df = pd.DataFrame(all_data)
+df = df.dropna()
 
 # Add AQI
 df["AQI"] = [
@@ -75,3 +87,4 @@ df["Risk"] = pd.cut(
 df.to_csv("data/climate_data.csv", index=False)
 
 print(f"✅ climate_data.csv updated successfully for {date}!")
+print(f"✅ Total States Saved: {len(df)}")
