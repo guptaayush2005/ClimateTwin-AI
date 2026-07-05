@@ -1,133 +1,142 @@
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://climatetwin-ai-xrqzvi56xx7zku7slpmmaj.streamlit.app/)
 # 🌍 ClimateTwin AI
-### AI-Powered Digital Twin of India's Climate System
 
-ClimateTwin AI is an intelligent climate analytics platform that combines real climate data, AI-powered predictions, risk intelligence, and simulation tools to monitor and analyze India's climate conditions.
+> An AI-Powered Digital Twin of India's Climate System using NASA climate data, interactive analytics, and climate intelligence tools.
+
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![Streamlit](https://img.shields.io/badge/Streamlit-Web%20App-red)
+![NASA](https://img.shields.io/badge/Data-NASA%20POWER-green)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
 ---
 
-# 🚀 Features
+## 🚀 About the Project
 
-## 📊 Climate Dashboard
-- Real-time climate monitoring
+ClimateTwin AI is an AI-powered climate intelligence platform designed to monitor, analyze, and simulate climate conditions across India.
+
+The platform integrates climate data from the **NASA POWER API** and provides interactive dashboards, analytics, risk intelligence, and reporting tools to support climate awareness and data-driven decision-making.
+
+This project was developed as part of my participation in the **Bharatiya Antariksh Hackathon**.
+
+---
+
+## ✨ Features
+
+### 📊 Real-Time Climate Dashboard
+- Average Temperature
+- Average Rainfall
+- Average Humidity
+- AQI Monitoring
 - India Climate Risk Map
-- Temperature, Rainfall, Humidity and AQI metrics
-- AI-generated climate alerts
+- AI Alerts
 
-## 🤖 AI Predictions
-- 7-Day Temperature Forecast
-- Machine Learning based prediction model
-- Climate Risk Prediction
-
-## 📈 Analytics
+### 📈 Climate Analytics
 - Temperature Distribution
 - Rainfall Analysis
+- Humidity Analysis
 - AQI Analysis
-- Risk Distribution Charts
+- Risk Distribution
 
-## 🌦️ Climate Simulation
-- Simulate Rainfall, Humidity and AQI values
-- Predict future temperature
-- Detect Heatwave and Flood Risk
+### 🤖 AI Predictions (Prototype)
+- AI-based temperature prediction
+- Climate forecasting demonstration
 
-## 🚨 Risk Intelligence
-- Hottest State Detection
-- Highest Rainfall State
-- Worst AQI State
-- High Risk States Monitoring
+### 🌦 Climate Simulation
+- Simulate different climate scenarios
+- Predict risk levels based on changing parameters
 
-## 📄 Reports
-- Download Climate Dataset (CSV)
-- Generate Professional PDF Reports
+### 🚨 Risk Intelligence
+- Heatwave Alerts
+- Heavy Rainfall Alerts
+- Poor Air Quality Alerts
+- High Risk State Identification
 
----
+### 📄 Reports
+- PDF Climate Report
+- CSV Data Export
 
-# 🤖 AI Climate Assistant
+### 🤖 AI Climate Assistant
+- Ask questions about climate data
+- Get instant insights and summaries
 
-The chatbot can answer questions related to climate data.
-
-### Supported Questions
-
-✅ What is the average temperature?
-
-✅ What is the average rainfall?
-
-✅ What is the average humidity?
-
-✅ Which state has the highest AQI?
-
-✅ Which state is the hottest?
-
-✅ Which state has the highest rainfall?
-
-✅ Which states are high risk?
-
-✅ How many states are available in the dataset?
-
-### Example Questions
-
-- What is the average temperature?
-- Which state has highest AQI?
-- Show high risk states.
-- Which is the hottest state?
-- What is the average rainfall?
-- What is the average humidity?
-- How many states are there?
+### 🔄 NASA Data Update
+- On-demand climate data refresh from NASA POWER API
 
 ---
 
-# 🧠 Machine Learning Model
+## 🛰️ Data Source
 
-Model Used:
-- Random Forest Regressor
+The project uses:
 
-Input Features:
-- Rainfall
-- Humidity
-- AQI
-
-Output:
-- Temperature Prediction
+- **NASA POWER API**
+- Temperature (T2M)
+- Rainfall (PRECTOTCORR)
+- Humidity (RH2M)
 
 ---
 
-# 🛰️ Data Source
+## 🛠️ Tech Stack
 
-Climate data is collected using:
-
-- NASA POWER Climate Dataset
-- State Coordinates Dataset
-
----
-
-# 🛠️ Tech Stack
-
-- Python
+### Frontend
 - Streamlit
+
+### Backend
+- Python
+
+### Data Processing
 - Pandas
 - NumPy
+
+### Visualization
 - Plotly
+
+### Machine Learning
 - Scikit-Learn
 - Joblib
+
+### Reports
 - ReportLab
+
+### API Integration
+- Requests Library
+
+### Deployment
+- GitHub
+- Streamlit Community Cloud
 
 ---
 
-# 📂 Project Structure
+## 🏗️ Project Architecture
 
 ```text
-ClimateTwin AI/
+NASA POWER API
+       ↓
+fetch_data.py
+       ↓
+climate_data.csv
+       ↓
+Dashboard & Analytics
+       ↓
+Reports & Risk Intelligence
+```
+
+---
+
+## 📂 Project Structure
+
+```text
+ClimateTwin-AI/
 │
 ├── app.py
+├── fetch_data.py
 ├── styles.py
 ├── requirements.txt
-├── README.md
 │
 ├── data/
 │   ├── climate_data.csv
 │   └── state_coordinates.csv
 │
 ├── models/
+│   ├── predict.py
 │   ├── train_model.py
 │   └── saved_model.pkl
 │
@@ -137,6 +146,7 @@ ClimateTwin AI/
 │   ├── _Analytics.py
 │   ├── _Climate_Simulation.py
 │   ├── _Reports.py
+│   ├── _PDF_Report.py
 │   └── _Risk_Intelligence.py
 │
 └── assets/
@@ -145,39 +155,44 @@ ClimateTwin AI/
 
 ---
 
-# ⚙️ Installation
+## 🌐 Live Demo
 
-```bash
-git clone <repository-link>
-cd ClimateTwin-AI
-pip install -r requirements.txt
-streamlit run app.py
-```
+https://climatetwin-ai-xrqzvi56xx7zku7slpmmaj.streamlit.app/
 
 ---
 
-# 🎯 Future Scope
+## 💻 GitHub Repository
 
-- Real-Time NASA API Integration
-- IMD Weather Integration
-- Satellite Data Analysis
+https://github.com/guptaayush2005/ClimateTwin-AI
+
+---
+
+## 🎯 Future Scope
+
+- Real AQI API Integration
+- Real-Time Weather Forecasting
+- Satellite Data Integration
 - Flood Prediction System
 - Drought Prediction System
-- Advanced AI Chatbot
-- Multi-country Climate Monitoring
+- Advanced AI Forecasting Models
+- Disaster Management Support
 
 ---
 
-# 👨‍💻 Developer
+## 👨‍💻 Developer
 
-**Ayush Gupta**
-
-B.Tech - Computer Science & Information Technology
-
+**Ayush Gupta**  
+B.Tech – Computer Science & Information Technology (CSIT)  
 Dronacharya Group of Institutions, AKTU
 
+LinkedIn: https://www.linkedin.com/in/guptaayush2005/
+
 ---
 
-# 📜 License
+## 📜 License
 
-This project is developed for educational, research and hackathon purposes.
+This project is licensed under the MIT License.
+
+---
+
+⭐ If you like this project, consider giving it a star on GitHub!
