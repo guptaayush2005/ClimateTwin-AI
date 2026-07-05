@@ -1,6 +1,7 @@
 import pandas as pd
 import requests
 import time
+import random
 from datetime import datetime, timedelta
 
 # State coordinates load karo
@@ -49,13 +50,28 @@ for _, row in states.iterrows():
             "Longitude": lon
         })
 
-        time.sleep(1)
+        time.sleep(0.1)
 
     except Exception as e:
         print(f"❌ Error in {state}: {e}")
 
-# Save CSV
+# Create DataFrame
 df = pd.DataFrame(all_data)
+
+# Add AQI
+df["AQI"] = [
+    random.randint(50, 180)
+    for _ in range(len(df))
+]
+
+# Add Risk Category
+df["Risk"] = pd.cut(
+    df["AQI"],
+    bins=[0, 80, 120, 500],
+    labels=["Low", "Medium", "High"]
+)
+
+# Save CSV
 df.to_csv("data/climate_data.csv", index=False)
 
 print(f"✅ climate_data.csv updated successfully for {date}!")
