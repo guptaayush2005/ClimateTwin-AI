@@ -1,3 +1,4 @@
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://climatetwin-ai-xrqzvi56xx7zku7slpmmaj.streamlit.app/)
 # 🌍 ClimateTwin AI
 ### AI-Powered Digital Twin of India's Climate System
 
