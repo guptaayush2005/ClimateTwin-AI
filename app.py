@@ -13,6 +13,12 @@ st.set_page_config(
 )
 
 # ---------------- SIDEBAR ----------------
+if st.sidebar.button("🔄 Update NASA Climate Data"):
+    with st.spinner("Updating climate data from NASA..."):
+        subprocess.run(["python", "fetch_data.py"])
+    st.success("✅ Climate data updated successfully!")
+    st.rerun()
+
 st.sidebar.image("assets/logo.png", width=150)
 
 st.sidebar.title("🌍 ClimateTwin AI")
@@ -26,13 +32,6 @@ st.sidebar.markdown("""
 - 📄 Reports
 - 🚨 Risk Intelligence
 """)
-
-# ---------------- NASA DATA UPDATE BUTTON ----------------
-if st.sidebar.button("🔄 Update NASA Climate Data"):
-    with st.spinner("Updating climate data from NASA..."):
-        subprocess.run(["python", "fetch_data.py"])
-    st.success("✅ Climate data updated successfully!")
-    st.rerun()
 
 # ---------------- HERO SECTION ----------------
 st.markdown("""
