@@ -2,10 +2,7 @@ from styles import apply_theme
 apply_theme()
 
 import streamlit as st
-if "data_updated" not in st.session_state:
-    with st.spinner("Updating climate data from NASA..."):
-        import fetch_data
-    st.session_state.data_updated = True
+import subprocess
 
 # ---------------- PAGE CONFIG ----------------
 st.set_page_config(
@@ -22,13 +19,20 @@ st.sidebar.title("🌍 ClimateTwin AI")
 st.sidebar.success("AI-Powered Digital Twin of India's Climate")
 
 st.sidebar.markdown("""
-- 📊 Dashboard  
-- 🤖 AI Predictions  
-- 📈 Analytics  
-- 🌦 Climate Simulation  
-- 📄 Reports  
-- 🚨 Risk Intelligence  
+- 📊 Dashboard
+- 🤖 AI Predictions
+- 📈 Analytics
+- 🌦 Climate Simulation
+- 📄 Reports
+- 🚨 Risk Intelligence
 """)
+
+# ---------------- NASA DATA UPDATE BUTTON ----------------
+if st.sidebar.button("🔄 Update NASA Climate Data"):
+    with st.spinner("Updating climate data from NASA..."):
+        subprocess.run(["python", "fetch_data.py"])
+    st.success("✅ Climate data updated successfully!")
+    st.rerun()
 
 # ---------------- HERO SECTION ----------------
 st.markdown("""
@@ -90,7 +94,7 @@ st.markdown("""
 
 # ---------------- INFO BOX ----------------
 st.info("""
-🌍 ClimateTwin AI integrates real climate data + AI models 
-to help in disaster prediction, environmental analysis 
+🌍 ClimateTwin AI integrates real climate data + AI models
+to help in disaster prediction, environmental analysis
 and policy decision support system.
 """)
