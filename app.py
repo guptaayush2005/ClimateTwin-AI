@@ -2,6 +2,10 @@ from styles import apply_theme
 apply_theme()
 
 import streamlit as st
+if "data_updated" not in st.session_state:
+    with st.spinner("Updating climate data from NASA..."):
+        import fetch_data
+    st.session_state.data_updated = True
 
 # ---------------- PAGE CONFIG ----------------
 st.set_page_config(
