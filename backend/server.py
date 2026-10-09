@@ -5,7 +5,7 @@ Serves all analytics, ML inference, simulation, reports, and static HTML/CSS/JS 
 import sys
 from pathlib import Path
 from typing import Optional
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, APIRouter, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
@@ -78,9 +78,23 @@ class AssistantQueryRequest(BaseModel):
     language: Optional[str] = "en"
 
 
+api_router = APIRouter()
+
+# Middleware to clean Vercel path rewrites
+@app.middleware("http")
+async def normalize_vercel_paths(request: Request, call_next):
+    path = request.scope.get("path", "")
+    for prefix in ["/api/index.py", "/index.py"]:
+        if path.startswith(prefix):
+            remainder = path[len(prefix):]
+            request.scope["path"] = remainder if remainder.startswith("/") else ("/" + remainder)
+            break
+    return await call_next(request)
+
+
 # ---------------- API ENDPOINTS ----------------
 
-@app.get("/api/health")
+@api_router.get("/health")
 def health_check():
     return {
         "status": "healthy",
@@ -89,7 +103,7 @@ def health_check():
     }
 
 
-@app.get("/api/climate-data")
+@api_router.get("/climate-data")
 def get_climate_data_api(state: Optional[str] = None):
     """
     Returns climate data rows, optionally filtered by state.
@@ -101,7 +115,7 @@ def get_climate_data_api(state: Optional[str] = None):
     }
 
 
-@app.get("/api/states")
+@api_router.get("/states")
 def get_states_api():
     """
     Returns unique list of all monitored Indian states.
@@ -110,7 +124,7 @@ def get_states_api():
     return {"states": states}
 
 
-@app.get("/api/summary")
+@api_router.get("/summary")
 def get_summary_api(state: Optional[str] = None):
     """
     Computes key summary KPIs (Average temp, rainfall, humidity, high risk count, extremes).
@@ -120,20 +134,19 @@ def get_summary_api(state: Optional[str] = None):
     return summary
 
 
-@app.get("/api/risk-intelligence")
+@api_router.get("/risk-intelligence")
 def get_risk_intelligence_api():
     """
     Computes extreme conditions, active alerts, and high-risk states breakdown.
     """
     df = load_climate_data()
     intel = get_risk_intelligence(df)
-    # Serialize dataframes to records
     intel["high_risk_states"] = intel["high_risk_df"].to_dict(orient="records")
     intel.pop("high_risk_df", None)
     return intel
 
 
-@app.post("/api/predict")
+@api_router.post("/predict")
 def predict_temperature_api(req: PredictRequest):
     """
     Predicts temperature based on rainfall, humidity, and AQI using RandomForest model.
@@ -145,7 +158,7 @@ def predict_temperature_api(req: PredictRequest):
     }
 
 
-@app.post("/api/forecast")
+@api_router.post("/forecast")
 def get_forecast_api(req: ForecastRequest):
     """
     Generates 7-day temperature forecast dataset.
@@ -157,13 +170,12 @@ def get_forecast_api(req: ForecastRequest):
         aqi=req.aqi,
         current_temp=req.current_temp
     )
-    # Convert forecast_df to dict
     forecast["forecast"] = forecast["forecast_df"].to_dict(orient="records")
     forecast.pop("forecast_df", None)
     return forecast
 
 
-@app.post("/api/simulate")
+@api_router.post("/simulate")
 def simulate_scenario_api(req: SimulateRequest):
     """
     Runs interactive What-If climate simulation.
@@ -172,7 +184,7 @@ def simulate_scenario_api(req: SimulateRequest):
     return result
 
 
-@app.post("/api/sync-nasa")
+@api_router.post("/sync-nasa")
 def sync_nasa_api():
     """
     Fetches latest telemetry from NASA POWER API.
@@ -181,7 +193,7 @@ def sync_nasa_api():
     return result
 
 
-@app.post("/api/ask")
+@api_router.post("/ask")
 def ask_assistant_api(req: AssistantQueryRequest):
     """
     Natural Language Climate Assistant query in user's selected language.
@@ -191,7 +203,7 @@ def ask_assistant_api(req: AssistantQueryRequest):
     return response
 
 
-@app.get("/api/export-csv")
+@api_router.get("/export-csv")
 def export_csv_api(high_risk_only: bool = False):
     """
     Exports climate dataset as CSV.
@@ -207,7 +219,7 @@ def export_csv_api(high_risk_only: bool = False):
     )
 
 
-@app.get("/api/export-pdf")
+@api_router.get("/export-pdf")
 def export_pdf_api(lang: str = "en"):
     """
     Generates and returns professional ReportLab PDF dossier.
@@ -221,11 +233,17 @@ def export_pdf_api(lang: str = "en"):
     )
 
 
+# Register routes both with /api prefix and at root
+app.include_router(api_router, prefix="/api")
+app.include_router(api_router)
+
+
+# ---------------- STATIC FILES FOR HTML/CSS/JS FRONTEND ----------------
+FRONTEND_DIR = BASE_DIR / "public" if (BASE_DIR / "public").exists() else BASE_DIR / "frontend"
+
+
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon_api():
-    """
-    Returns app icon for browser tabs.
-    """
     fav_file = FRONTEND_DIR / "favicon.ico"
     if fav_file.exists():
         return FileResponse(fav_file, media_type="image/x-icon")
@@ -234,9 +252,6 @@ def favicon_api():
         return FileResponse(logo_file, media_type="image/png")
     return Response(status_code=204)
 
-
-# ---------------- STATIC FILES FOR HTML/CSS/JS FRONTEND ----------------
-FRONTEND_DIR = BASE_DIR / "public" if (BASE_DIR / "public").exists() else BASE_DIR / "frontend"
 
 if FRONTEND_DIR.exists():
     app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")

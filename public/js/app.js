@@ -119,11 +119,36 @@ function setupLanguageSwitcher() {
 }
 
 /**
+ * Helper to fetch API with automatic fallback between /api/* and /* for Vercel/local compatibility
+ */
+async function apiFetch(path, options = {}) {
+  const normPath = path.startsWith("/") ? path : `/${path}`;
+  const apiPath = normPath.startsWith("/api") ? normPath : `/api${normPath}`;
+  const rootPath = normPath.startsWith("/api") ? normPath.replace(/^\/api/, "") || "/" : normPath;
+
+  try {
+    let res = await fetch(apiPath, options);
+    if (res.ok) return res;
+    if (res.status === 404) {
+      let res2 = await fetch(rootPath, options);
+      if (res2.ok) return res2;
+    }
+    return res;
+  } catch (err) {
+    try {
+      return await fetch(rootPath, options);
+    } catch (e2) {
+      throw err;
+    }
+  }
+}
+
+/**
  * Load Climate Dataset from API (with fallback)
  */
 async function loadData() {
   try {
-    const res = await fetch("/api/climate-data");
+    const res = await apiFetch("/climate-data");
     if (res.ok) {
       const json = await res.json();
       allClimateData = json.data && json.data.length ? json.data : FALLBACK_DATA;
@@ -342,7 +367,7 @@ async function updateForecastView() {
   const stateData = allClimateData.find(r => r.State === state) || allClimateData[0];
 
   try {
-    const res = await fetch("/api/forecast", {
+    const res = await apiFetch("/forecast", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -423,7 +448,7 @@ function setupSimulationControls() {
 
     let predTemp = +(28 - (rain * 0.04) - ((hum - 60) * 0.07) + ((aqi - 100) * 0.02)).toFixed(2);
     try {
-      const res = await fetch("/api/simulate", {
+      const res = await apiFetch("/simulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rainfall: rain, humidity: hum, aqi: aqi })
@@ -466,7 +491,7 @@ function formatMarkdown(text) {
  */
 async function fetchAssistantAnswer(query) {
   try {
-    const res = await fetch("/api/ask", {
+    const res = await apiFetch("/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question: query, language: currentLanguage })
@@ -715,7 +740,7 @@ function setupNasaSync() {
     btn.textContent = t("syncing_nasa");
     btn.disabled = true;
     try {
-      const res = await fetch("/api/sync-nasa", { method: "POST" });
+      const res = await apiFetch("/sync-nasa", { method: "POST" });
       if (res.ok) {
         const json = await res.json();
         alert(json.message || "NASA data updated successfully!");
