@@ -2,8 +2,10 @@
 ClimateTwin AI - Backend Report Service
 Generates professional PDF and CSV analytical reports using ReportLab and Pandas.
 """
+from __future__ import annotations
 import tempfile
 from datetime import datetime
+from typing import Optional
 import pandas as pd
 try:
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle

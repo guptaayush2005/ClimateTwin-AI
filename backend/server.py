@@ -236,7 +236,7 @@ def favicon_api():
 
 
 # ---------------- STATIC FILES FOR HTML/CSS/JS FRONTEND ----------------
-FRONTEND_DIR = BASE_DIR / "frontend"
+FRONTEND_DIR = BASE_DIR / "public" if (BASE_DIR / "public").exists() else BASE_DIR / "frontend"
 
 if FRONTEND_DIR.exists():
     app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")

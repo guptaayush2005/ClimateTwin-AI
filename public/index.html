@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClimateTwin AI - National Climate Intelligence Platform</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="./assets/logo.png" />
+  <link rel="alternate icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>" />
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Leaflet.js CSS for GIS Geospatial Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- App Custom Stylesheet -->
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- ==================== SIDEBAR ==================== -->
+    <aside class="sidebar">
+      <div class="brand-section">
+        <div class="brand-logo">🌍</div>
+        <div class="brand-text">
+          <h2 data-i18n="app_title">ClimateTwin AI</h2>
+          <p data-i18n="badge_platform">National Climate Intelligence</p>
+        </div>
+      </div>
+
+      <!-- Controls: Language & NASA Sync -->
+      <div class="sidebar-controls">
+        <div class="select-wrapper">
+          <label data-i18n="select_language">Language</label>
+          <select id="languageSelect" class="custom-select">
+            <option value="en">🇬🇧 English</option>
+            <option value="hi">🇮🇳 हिन्दी (Hindi)</option>
+            <option value="mr">🇮🇳 मराठी (Marathi)</option>
+            <option value="bn">🇮🇳 বাংলা (Bengali)</option>
+            <option value="ta">🇮🇳 தமிழ் (Tamil)</option>
+          </select>
+        </div>
+
+        <button id="btnNasaSync" class="btn-nasa-sync">
+          <span>🔄</span> <span data-i18n="update_nasa_data">Update NASA Data</span>
+        </button>
+      </div>
+
+      <!-- Nav Links -->
+      <ul class="nav-menu">
+        <li class="nav-item active" data-view="home">
+          <span class="nav-icon">🏠</span>
+          <span class="nav-text" data-i18n="nav_home">Home</span>
+        </li>
+        <li class="nav-item" data-view="dashboard">
+          <span class="nav-icon">📊</span>
+          <span class="nav-text" data-i18n="nav_dashboard">Dashboard</span>
+        </li>
+        <li class="nav-item" data-view="predictions">
+          <span class="nav-icon">🤖</span>
+          <span class="nav-text" data-i18n="nav_predictions">AI Predictions</span>
+        </li>
+        <li class="nav-item" data-view="analytics">
+          <span class="nav-icon">📈</span>
+          <span class="nav-text" data-i18n="nav_analytics">Analytics</span>
+        </li>
+        <li class="nav-item" data-view="simulation">
+          <span class="nav-icon">🌦️</span>
+          <span class="nav-text" data-i18n="nav_simulation">Climate Simulation</span>
+        </li>
+        <li class="nav-item" data-view="risk">
+          <span class="nav-icon">🚨</span>
+          <span class="nav-text" data-i18n="nav_risk">Risk Intelligence</span>
+        </li>
+        <li class="nav-item" data-view="reports">
+          <span class="nav-icon">📄</span>
+          <span class="nav-text" data-i18n="nav_reports">Reports & PDF</span>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <p>ClimateTwin AI v2.0 • Web Edition</p>
+      </div>
+    </aside>
+
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <main class="main-content">
+
+      <!-- Top Header -->
+      <header class="top-header">
+        <div class="top-title">
+          <h1 data-i18n="app_title">ClimateTwin AI</h1>
+          <p data-i18n="app_subtitle">AI-Powered Digital Twin of India's Climate System</p>
+        </div>
+        <div class="top-actions">
+          <div class="badge-live">
+            <span class="pulse-dot"></span>
+            <span>NASA LIVE TELEMETRY</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- VIEW 1: HOME -->
+      <section id="view-home" class="view-panel active-view">
+        <div class="hero-banner">
+          <h1 data-i18n="app_title">ClimateTwin AI</h1>
+          <p class="hero-sub" data-i18n="app_subtitle">AI-Powered Digital Twin of India's Climate System</p>
+          <p class="hero-tag" data-i18n="app_tagline">Real-time Monitoring • AI Predictions • Risk Intelligence • Climate Simulation</p>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="card-glass metric-card">
+            <div class="metric-header">
+              <span class="metric-label" data-i18n="avg_temperature">Avg Temperature</span>
+              <span class="metric-icon">🌡️</span>
+            </div>
+            <div class="metric-value metric-val-temp">-- °C</div>
+            <span class="metric-delta delta-pos">+2.4°C vs Historical</span>
+          </div>
+
+          <div class="card-glass metric-card">
+            <div class="metric-header">
+              <span class="metric-label" data-i18n="avg_rainfall">Avg Rainfall</span>
+              <span class="metric-icon">🌧️</span>
+            </div>
+            <div class="metric-value metric-val-rain">-- mm</div>
+            <span class="metric-delta delta-pos">+18% Anomaly</span>
+          </div>
+
+          <div class="card-glass metric-card">
+            <div class="metric-header">
+              <span class="metric-label" data-i18n="avg_humidity">Avg Humidity</span>
+              <span class="metric-icon">💧</span>
+            </div>
+            <div class="metric-value metric-val-humidity">-- %</div>
+            <span class="metric-delta delta-neg">-5% Variance</span>
+          </div>
+
+          <div class="card-glass metric-card">
+            <div class="metric-header">
+              <span class="metric-label" data-i18n="high_risk_states">High Risk States</span>
+              <span class="metric-icon">🚨</span>
+            </div>
+            <div class="metric-value metric-val-risk">--</div>
+            <span class="metric-delta delta-neg">Early Warning Active</span>
+          </div>
+        </div>
+
+        <div class="card-glass">
+          <h3 style="margin-bottom: 16px;" data-i18n="features_heading">Platform Capabilities</h3>
+          <div class="features-grid">
+            <div class="feature-box"><i>🛰️</i><span data-i18n="feat_1">Real-time Climate Monitoring via NASA POWER API</span></div>
+            <div class="feature-box"><i>🤖</i><span data-i18n="feat_2">Machine Learning 7-Day Forecasting Engine</span></div>
+            <div class="feature-box"><i>🔥</i><span data-i18n="feat_3">Extreme Weather & Heatwave Risk Intelligence</span></div>
+            <div class="feature-box"><i>🌦️</i><span data-i18n="feat_4">Interactive What-If Scenario Climate Simulation</span></div>
+            <div class="feature-box"><i>🗺️</i><span data-i18n="feat_5">Geographic GIS Mapping & Visualizations</span></div>
+            <div class="feature-box"><i>🌐</i><span data-i18n="feat_6">Multilingual AI Climate Assistant</span></div>
+          </div>
+          <div class="card-glass" style="margin-top: 20px; background: rgba(37, 99, 235, 0.08); border-left: 4px solid var(--accent-primary);">
+            <p style="font-size: 0.9rem;" data-i18n="info_box">ClimateTwin AI integrates authoritative NASA satellite telemetry and machine learning models to empower disaster response agencies, environmental planners, and citizens with actionable climate intelligence.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 2: DASHBOARD -->
+      <section id="view-dashboard" class="view-panel">
+        <div class="card-glass" style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <h2 data-i18n="nav_dashboard">Climate Intelligence Dashboard</h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="app_subtitle">AI-powered real-time climate monitoring system for India</p>
+          </div>
+          <div style="min-width: 260px;">
+            <select id="dashboardStateSelect" class="custom-select">
+              <option value="all">All States (National View)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="card-glass metric-card">
+            <div class="metric-header"><span class="metric-label" data-i18n="avg_temperature">Avg Temperature</span><span>🌡️</span></div>
+            <div class="metric-value metric-val-temp">-- °C</div>
+          </div>
+          <div class="card-glass metric-card">
+            <div class="metric-header"><span class="metric-label" data-i18n="avg_rainfall">Avg Rainfall</span><span>🌧️</span></div>
+            <div class="metric-value metric-val-rain">-- mm</div>
+          </div>
+          <div class="card-glass metric-card">
+            <div class="metric-header"><span class="metric-label" data-i18n="avg_humidity">Avg Humidity</span><span>💧</span></div>
+            <div class="metric-value metric-val-humidity">-- %</div>
+          </div>
+          <div class="card-glass metric-card">
+            <div class="metric-header"><span class="metric-label" data-i18n="high_risk_states">High Risk States</span><span>🚨</span></div>
+            <div class="metric-value metric-val-risk">--</div>
+          </div>
+        </div>
+
+        <!-- 2-Col Layout: Map + AI Alerts -->
+        <div class="dashboard-grid-2col">
+          <div class="card-glass">
+            <h3 style="margin-bottom: 14px;" data-i18n="climate_risk_map">India Climate Risk Map</h3>
+            <div id="mapContainer"></div>
+          </div>
+
+          <div class="card-glass">
+            <h3 style="margin-bottom: 16px;" data-i18n="ai_alerts_title">AI Climate Alerts</h3>
+            <div class="alerts-container">
+              <div id="alertHeatwave" class="alert-item alert-heat">🔥 Heatwave Alert: Punjab (34.59°C)</div>
+              <div id="alertRain" class="alert-item alert-rain">🌧️ Heavy Rainfall Alert: Chhattisgarh (31.55 mm)</div>
+              <div id="alertAqi" class="alert-item alert-aqi">🌫️ Poor Air Quality Alert: Jharkhand (AQI 177)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="charts-row">
+          <div class="card-glass chart-box">
+            <h3 data-i18n="top_hottest_states">Top Hottest States</h3>
+            <div style="flex-grow: 1; position: relative;"><canvas id="hottestChart"></canvas></div>
+          </div>
+          <div class="card-glass chart-box">
+            <h3 data-i18n="top_rainfall_states">Top Rainfall States</h3>
+            <div style="flex-grow: 1; position: relative;"><canvas id="rainfallChart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="card-glass chart-box" style="margin-bottom: 28px;">
+          <h3 data-i18n="humidity_analysis">Humidity Analysis</h3>
+          <div style="flex-grow: 1; position: relative; height: 260px;"><canvas id="humidityChart"></canvas></div>
+        </div>
+
+        <!-- AI Assistant Box -->
+        <div class="card-glass assistant-box">
+          <h3 data-i18n="assistant_title">AI Climate Assistant</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="assistant_subtitle">Natural language query interface for Indian climate indicators.</p>
+          <div class="chat-input-bar">
+            <input id="assistantInput" type="text" class="chat-input" placeholder="Ask anything about temperature, rain, AQI, or high-risk states..." data-i18n-placeholder="assistant_placeholder" />
+            <button id="btnAskAssistant" class="btn-primary" data-i18n="ask_button">Ask Assistant</button>
+          </div>
+          <div id="assistantResponse" class="chat-response-card"></div>
+        </div>
+      </section>
+
+      <!-- VIEW 3: AI PREDICTIONS -->
+      <section id="view-predictions" class="view-panel">
+        <div class="card-glass" style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <h2 data-i18n="predictions_title">AI Climate Predictions</h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="predictions_subtitle">RandomForest 7-day temperature forecast model.</p>
+          </div>
+          <div style="min-width: 240px;">
+            <select id="predictionStateSelect" class="custom-select"></select>
+          </div>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="card-glass metric-card">
+            <div class="metric-header"><span class="metric-label" data-i18n="current_temp">Current Temp</span><span>🌡️</span></div>
+            <div id="predCurTemp" class="metric-value">-- °C</div>
+          </div>
+          <div class="card-glass metric-card">
+            <div class="metric-header"><span class="metric-label" data-i18n="predicted_avg">Predicted Avg (7D)</span><span>🤖</span></div>
+            <div id="predAvgTemp" class="metric-value">-- °C</div>
+          </div>
+          <div class="card-glass metric-card">
+            <div class="metric-header"><span class="metric-label" data-i18n="temp_change">Temp Change</span><span>📈</span></div>
+            <div id="predDeltaTemp" class="metric-value">-- °C</div>
+          </div>
+          <div class="card-glass metric-card">
+            <div class="metric-header"><span class="metric-label" data-i18n="risk">Risk Classification</span><span>⚠️</span></div>
+            <div style="margin-top: 10px;"><span id="predRiskBadge" class="badge-pill badge-medium">MODERATE RISK</span></div>
+          </div>
+        </div>
+
+        <div class="card-glass chart-box">
+          <h3 data-i18n="forecast_chart_title">7-Day Temperature Forecast</h3>
+          <div style="height: 380px; position: relative;"><canvas id="forecastChart"></canvas></div>
+        </div>
+      </section>
+
+      <!-- VIEW 4: ANALYTICS -->
+      <section id="view-analytics" class="view-panel">
+        <div class="card-glass" style="margin-bottom: 24px;">
+          <h2 data-i18n="nav_analytics">Climate Analytics</h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">Statistical distributions and risk breakdowns across India.</p>
+        </div>
+
+        <div class="charts-row">
+          <div class="card-glass chart-box">
+            <h3 data-i18n="top_rainfall_states">Rainfall Rankings</h3>
+            <div style="flex-grow: 1; position: relative;"><canvas id="rainfallChart"></canvas></div>
+          </div>
+          <div class="card-glass chart-box">
+            <h3 data-i18n="risk_distribution">Climate Risk Distribution</h3>
+            <div style="flex-grow: 1; position: relative;"><canvas id="riskPieChart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="card-glass" style="margin-top: 24px; text-align: right;">
+          <a href="/api/export-csv" download="climate_data.csv" class="btn-primary" style="text-decoration: none; display: inline-block;">
+            📥 <span data-i18n="export_csv">Download CSV</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- VIEW 5: SIMULATION -->
+      <section id="view-simulation" class="view-panel">
+        <div class="card-glass" style="margin-bottom: 24px;">
+          <h2 data-i18n="simulation_title">Climate Simulation Engine</h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="simulation_subtitle">Simulate future climate scenarios using AI-driven indicator inputs.</p>
+        </div>
+
+        <div class="card-glass">
+          <h3 style="margin-bottom: 20px;" data-i18n="adjust_params">Adjust Climate Parameters</h3>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <span data-i18n="param_rainfall">Rainfall (mm)</span>
+              <span id="valRain" style="color: var(--accent-cyan); font-weight: 700;">20 mm</span>
+            </div>
+            <input id="sliderRain" type="range" min="0" max="120" value="20" class="range-slider" />
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <span data-i18n="param_humidity">Humidity (%)</span>
+              <span id="valHum" style="color: var(--accent-cyan); font-weight: 700;">60 %</span>
+            </div>
+            <input id="sliderHum" type="range" min="15" max="100" value="60" class="range-slider" />
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <span data-i18n="param_aqi">Air Quality Index (AQI)</span>
+              <span id="valAqi" style="color: var(--accent-cyan); font-weight: 700;">100</span>
+            </div>
+            <input id="sliderAqi" type="range" min="30" max="350" value="100" class="range-slider" />
+          </div>
+
+          <button id="btnRunSimulation" class="btn-primary" style="margin-top: 14px;" data-i18n="run_simulation_btn">🚀 Run Simulation</button>
+
+          <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border-glass);">
+            <div class="card-glass metric-card" style="display: inline-block; min-width: 260px;">
+              <span class="metric-label" data-i18n="predicted_temp_result">Predicted Temperature</span>
+              <div id="simResultTemp" class="metric-value">-- °C</div>
+            </div>
+            <div id="simAlerts" style="margin-top: 16px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 6: RISK INTELLIGENCE -->
+      <section id="view-risk" class="view-panel">
+        <div class="card-glass" style="margin-bottom: 24px;">
+          <h2 data-i18n="risk_intel_title">Risk Intelligence Center</h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="risk_intel_subtitle">Comprehensive early warning system for climate anomalies.</p>
+        </div>
+
+        <div class="card-glass">
+          <h3 style="margin-bottom: 16px;" data-i18n="high_risk_states_table">High Risk States Overview</h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>State</th>
+                  <th>Temperature</th>
+                  <th>Rainfall</th>
+                  <th>Humidity</th>
+                  <th>AQI</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="highRiskTableBody"></tbody>
+            </table>
+          </div>
+
+          <div style="margin-top: 20px; display: flex; gap: 14px;">
+            <a href="/api/export-csv?high_risk_only=true" download="high_risk_states.csv" class="btn-primary" style="text-decoration: none;">
+              📥 <span data-i18n="download_high_risk_csv">Download High Risk States CSV</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 7: REPORTS -->
+      <section id="view-reports" class="view-panel">
+        <div class="card-glass" style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <h2 data-i18n="reports_title">Climate Intelligence Reports</h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="reports_subtitle">Generate and export verifiable PDF & CSV analytical dossiers.</p>
+          </div>
+          <div>
+            <a href="/api/export-pdf" download="ClimateTwin_AI_Report.pdf" class="btn-primary" style="text-decoration: none; padding: 12px 24px;">
+              📄 <span data-i18n="generate_pdf_btn">Generate PDF Report</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="card-glass">
+          <h3 style="margin-bottom: 16px;" data-i18n="dataset_table_title">National Climate Dataset</h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>State</th>
+                  <th>Temperature (°C)</th>
+                  <th>Rainfall (mm)</th>
+                  <th>Humidity (%)</th>
+                  <th>AQI</th>
+                  <th>Risk</th>
+                </tr>
+              </thead>
+              <tbody id="fullDatasetTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Leaflet.js for Geospatial Map -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js for High-Performance Responsive Data Visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Application Modules -->
+  <script src="./js/translations.js"></script>
+  <script src="./js/charts.js"></script>
+  <script src="./js/app.js"></script>
+
+</body>
+</html>
