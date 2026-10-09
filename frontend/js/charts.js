@@ -79,6 +79,15 @@ function initIndiaMap(records) {
       fillOpacity: 0.75
     });
 
+    let diagTag = "";
+    if (typeof getRiskDiagnosis === "function") {
+      const diag = getRiskDiagnosis(row);
+      diagTag = `<div style="margin-top: 6px; padding-top: 4px; border-top: 1px solid #cbd5e1; font-size: 11px;">
+        <b>Hazard Trigger:</b> <span style="color: ${markerColor}; font-weight: 700;">${diag.shortLabel}</span><br/>
+        <a href="javascript:void(0)" onclick="window.openRiskDetailModal('${row.State}')" style="display: inline-block; margin-top: 4px; color: #2563eb; font-weight: 700; text-decoration: underline;">🔍 Click for Hazard Reason & NDMA Tips</a>
+      </div>`;
+    }
+
     const popupHtml = `
       <div style="font-family: inherit; font-size: 13px; line-height: 1.4; color: #0f172a;">
         <strong style="font-size: 14px; color: #1e3a8a;">📍 ${row.State}</strong><br/>
@@ -86,6 +95,7 @@ function initIndiaMap(records) {
         🌧️ <b>Rain:</b> ${row.Rainfall} mm<br/>
         💧 <b>Humidity:</b> ${row.Humidity} %<br/>
         🌫️ <b>AQI:</b> ${row.AQI} (<span style="color:${markerColor}; font-weight:700;">${row.Risk}</span>)
+        ${diagTag}
       </div>
     `;
 

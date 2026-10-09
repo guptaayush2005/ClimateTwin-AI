@@ -50,6 +50,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupSimulationControls();
   setupAssistant();
   setupNasaSync();
+  setupRiskModal();
 
   // 3. Load Data & Render Views
   await loadData();
@@ -311,7 +312,7 @@ function renderDashboardView() {
 }
 
 /**
- * Render Risk Intelligence View Elements
+ * Render Risk Intelligence View Elements with Interactive Hazard Diagnosis
  */
 function renderRiskView() {
   const tbody = document.getElementById("highRiskTableBody");
@@ -321,14 +322,22 @@ function renderRiskView() {
   tbody.innerHTML = "";
 
   highRisk.forEach(r => {
+    const diag = getRiskDiagnosis(r);
     const tr = document.createElement("tr");
+    tr.className = "state-row";
     tr.innerHTML = `
       <td><strong>📍 ${r.State}</strong></td>
       <td>${r.Temperature} °C</td>
       <td>${r.Rainfall} mm</td>
       <td>${r.Humidity} %</td>
-      <td><strong>${r.AQI}</strong></td>
-      <td><span class="badge-pill badge-high">HIGH RISK</span></td>
+      <td><span style="color: #ef4444; font-weight: 700;">${r.AQI}</span></td>
+      <td>
+        <button class="btn-risk-detail badge-high" onclick="window.openRiskDetailModal('${r.State}')" title="Click to view detailed hazard breakdown & NDMA precautions">
+          <span>🔴 HIGH RISK</span>
+          <span style="font-weight: 500; opacity: 0.95;">• ${diag.shortLabel}</span>
+          <span style="margin-left: 4px; font-size: 0.72rem; color: #fca5a5;">🔍 Click to View</span>
+        </button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
@@ -343,15 +352,23 @@ function renderReportsView() {
 
   tbody.innerHTML = "";
   allClimateData.forEach(r => {
+    const diag = getRiskDiagnosis(r);
     const tr = document.createElement("tr");
+    tr.className = "state-row";
     const riskBadge = r.Risk === "High" ? "badge-high" : (r.Risk === "Medium" ? "badge-medium" : "badge-low");
     tr.innerHTML = `
-      <td><strong>${r.State}</strong></td>
+      <td><strong>📍 ${r.State}</strong></td>
       <td>${r.Temperature} °C</td>
       <td>${r.Rainfall} mm</td>
       <td>${r.Humidity} %</td>
       <td>${r.AQI}</td>
-      <td><span class="badge-pill ${riskBadge}">${r.Risk}</span></td>
+      <td>
+        <button class="btn-risk-detail ${riskBadge}" onclick="window.openRiskDetailModal('${r.State}')" title="Click for risk diagnosis">
+          <span>${r.Risk}</span>
+          <span style="font-size: 0.75rem; opacity: 0.95;">• ${diag.shortLabel}</span>
+          <span style="font-size: 0.72rem;">ℹ️</span>
+        </button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
@@ -774,6 +791,8 @@ function renderAnalyticsTable(dataset) {
     if (row.AQI >= 150) aqiColor = "#ef4444";
     else if (row.AQI >= 100) aqiColor = "#f59e0b";
 
+    const diag = getRiskDiagnosis(row);
+
     return `
       <tr class="state-row">
         <td><strong>📍 ${row.State}</strong></td>
@@ -781,7 +800,13 @@ function renderAnalyticsTable(dataset) {
         <td>${row.Rainfall} mm</td>
         <td>${row.Humidity} %</td>
         <td><span style="color: ${aqiColor}; font-weight: 700;">${row.AQI}</span></td>
-        <td><span class="badge-pill ${riskBadgeClass}">${row.Risk}</span></td>
+        <td>
+          <button class="btn-risk-detail ${riskBadgeClass}" onclick="window.openRiskDetailModal('${row.State}')" title="Click to view why this risk was flagged & precautions">
+            <span>${row.Risk}</span>
+            <span style="font-size: 0.75rem; opacity: 0.95;">• ${diag.shortLabel}</span>
+            <span style="font-size: 0.72rem;">ℹ️</span>
+          </button>
+        </td>
       </tr>
     `;
   }).join("");
@@ -819,5 +844,205 @@ function setupNasaSync() {
       btn.textContent = t("update_nasa_data");
       btn.disabled = false;
     }
+  });
+}
+
+/**
+ * Climate Risk Diagnosis Engine
+ * Evaluates why a state is flagged for High/Medium risk and generates NDMA guidelines.
+ */
+function getRiskDiagnosis(row) {
+  if (!row) {
+    return {
+      primaryDriver: "Normal",
+      shortLabel: "Normal",
+      driverIcon: "🟢",
+      explanation: "",
+      advisory: "",
+      tempStatus: "Normal",
+      rainStatus: "Normal",
+      humStatus: "Normal",
+      aqiStatus: "Normal"
+    };
+  }
+
+  const lang = currentLanguage || "en";
+  let driverIcon = "🟢";
+  let primaryDriver = "Stable Baseline";
+
+  // Parameter Evaluation
+  const isAqiHazard = row.AQI >= 150;
+  const isAqiWarning = row.AQI >= 100 && row.AQI < 150;
+  const isTempCritical = row.Temperature >= 35.0;
+  const isTempWarm = row.Temperature >= 30.0 && row.Temperature < 35.0;
+  const isRainExtreme = row.Rainfall >= 20.0;
+  const isRainModerate = row.Rainfall >= 8.0 && row.Rainfall < 20.0;
+
+  // Primary Driver determination
+  if (row.Risk === "High") {
+    if (isAqiHazard && isTempCritical) {
+      primaryDriver = lang === "hi" ? "भीषण लू और जहरीली वायु" : "Extreme Heatwave & Toxic AQI";
+      driverIcon = "🔥🌫️";
+    } else if (isAqiHazard) {
+      primaryDriver = lang === "hi" ? `गंभीर वायु प्रदूषण (AQI ${row.AQI})` : `Severe Air Pollution (AQI ${row.AQI})`;
+      driverIcon = "🌫️";
+    } else if (isTempCritical) {
+      primaryDriver = lang === "hi" ? `भीषण लू / हीटवेव (${row.Temperature}°C)` : `Extreme Heatwave (${row.Temperature}°C)`;
+      driverIcon = "🔥";
+    } else if (isRainExtreme) {
+      primaryDriver = lang === "hi" ? `अत्यधिक वर्षा / बाढ़ (${row.Rainfall}mm)` : `Heavy Precipitation / Flooding (${row.Rainfall}mm)`;
+      driverIcon = "🌧️";
+    } else if (row.AQI >= 120) {
+      primaryDriver = lang === "hi" ? `खराब वायु गुणवत्ता (AQI ${row.AQI})` : `Unhealthy Air (AQI ${row.AQI})`;
+      driverIcon = "🌫️";
+    } else {
+      primaryDriver = lang === "hi" ? "मिश्रित जलवायु असंतुलन" : "Compound Climate Anomaly";
+      driverIcon = "🚨";
+    }
+  } else if (row.Risk === "Medium") {
+    if (isAqiWarning) {
+      primaryDriver = lang === "hi" ? `मध्यम वायु प्रदूषण (AQI ${row.AQI})` : `Moderate AQI (${row.AQI})`;
+      driverIcon = "🌫️";
+    } else if (isTempWarm) {
+      primaryDriver = lang === "hi" ? `उष्ण मौसम (${row.Temperature}°C)` : `Thermal Stress (${row.Temperature}°C)`;
+      driverIcon = "🌡️";
+    } else if (isRainModerate) {
+      primaryDriver = lang === "hi" ? `मध्यम वर्षा (${row.Rainfall}mm)` : `Moderate Rainfall (${row.Rainfall}mm)`;
+      driverIcon = "🌧️";
+    } else {
+      primaryDriver = lang === "hi" ? "मध्यम मौसमी उतार-चढ़ाव" : "Moderate Climate Variance";
+      driverIcon = "🟠";
+    }
+  } else {
+    primaryDriver = lang === "hi" ? "सुरक्षित सामान्य स्तर" : "Stable Baseline (Safe)";
+    driverIcon = "🟢";
+  }
+
+  // Explanation
+  let explanation = "";
+  if (lang === "hi") {
+    explanation = `यह राज्य <b>${row.Risk} जोखिम</b> श्रेणी में आता है क्योंकि: `;
+    const reasons = [];
+    if (row.AQI >= 120) reasons.push(`AQI स्तर <b>${row.AQI}</b> है (जो 120 की सुरक्षित सीमा से अधिक है)`);
+    if (row.Temperature >= 30) reasons.push(`तापमान <b>${row.Temperature}°C</b> दर्ज हुआ है (थर्मल स्ट्रेस सीमा)`);
+    if (row.Rainfall >= 10) reasons.push(`वर्षा <b>${row.Rainfall} mm</b> है (जलभराव संभावना)`);
+    if (!reasons.length) reasons.push(`सभी मौसम संकेतक सुरक्षित सीमा के अंदर हैं।`);
+    explanation += reasons.join(" तथा ") + "।";
+  } else {
+    explanation = `Flagged under <b>${row.Risk} Risk Tier</b> primarily driven by: `;
+    const reasons = [];
+    if (row.AQI >= 120) reasons.push(`Ambient AQI reading of <b>${row.AQI}</b> (exceeds 120 safety ceiling)`);
+    if (row.Temperature >= 30) reasons.push(`Surface Temperature at <b>${row.Temperature}°C</b> (thermal load)`);
+    if (row.Rainfall >= 10) reasons.push(`Precipitation accumulation of <b>${row.Rainfall} mm</b>`);
+    if (!reasons.length) reasons.push(`Meteorological parameters are within standard baseline tolerances.`);
+    explanation += reasons.join(", alongside ") + ".";
+  }
+
+  // NDMA Advisory
+  let advisory = "";
+  if (lang === "hi") {
+    if (row.Risk === "High") {
+      advisory = `⚠️ <b>एनडीएमए / स्वास्थ्य दिशानिर्देश:</b><br/>
+1. <b>वायु गुणवत्ता:</b> बाहर जाते समय N95 मास्क पहनें, सुबह की सैर सीमित करें।<br/>
+2. <b>गर्मी/लू:</b> दोपहर 12 से 3 बजे के बीच धूप से बचें और ओआरएस/पानी पीएं।<br/>
+3. <b>भारी बारिश:</b> जलभराव और बिजली के खंभों के पास जाने से बचें।`;
+    } else if (row.Risk === "Medium") {
+      advisory = `ℹ️ <b>सावधानी निर्देश:</b> संवेदनशील व्यक्ति (बच्चे और बुजुर्ग) अत्यधिक शारीरिक परिश्रम से बचें तथा पर्याप्त जल ग्रहण करें।`;
+    } else {
+      advisory = `✅ <b>सामान्य स्थिति:</b> मौसम अनुकूल है। कोई आपातकालीन चेतावनी सक्रिय नहीं है।`;
+    }
+  } else {
+    if (row.Risk === "High") {
+      advisory = `⚠️ <b>NDMA Actionable Advisory:</b><br/>
+1. <b>Air Protection:</b> Wear particulate N95 respirators outdoors; run indoor air purifiers.<br/>
+2. <b>Thermal Safety:</b> Limit strenuous work between 12 PM - 3 PM; maintain hydration with ORS.<br/>
+3. <b>Drainage Alert:</b> Exercise caution around waterlogged lowlands and flooded roadways.`;
+    } else if (row.Risk === "Medium") {
+      advisory = `ℹ️ <b>Precautionary Note:</b> Vulnerable demographics (elderly & children) should regulate prolonged outdoor exertion and stay hydrated.`;
+    } else {
+      advisory = `✅ <b>Stable Parameters:</b> Ambient environment within optimal comfort thresholds. No active emergency protocols required.`;
+    }
+  }
+
+  return {
+    primaryDriver,
+    driverIcon,
+    shortLabel: `${driverIcon} ${primaryDriver}`,
+    explanation,
+    advisory,
+    tempStatus: row.Temperature >= 35 ? "Critical (> 35°C)" : (row.Temperature >= 30 ? "Warm (> 30°C)" : "Normal"),
+    rainStatus: row.Rainfall >= 20 ? "Heavy (> 20mm)" : (row.Rainfall >= 8 ? "Moderate" : "Normal"),
+    humStatus: row.Humidity >= 80 ? "High Saturation" : "Optimal",
+    aqiStatus: row.AQI >= 150 ? "Hazardous (> 150)" : (row.AQI >= 100 ? "Poor (> 100)" : "Good/Moderate")
+  };
+}
+
+/**
+ * Open Interactive Risk Diagnosis Modal for any State
+ */
+window.openRiskDetailModal = function(stateName) {
+  const row = allClimateData.find(r => r.State.toLowerCase() === stateName.toLowerCase());
+  if (!row) return;
+
+  const diag = getRiskDiagnosis(row);
+  const modal = document.getElementById("riskModal");
+  if (!modal) return;
+
+  document.getElementById("riskModalState").textContent = row.State;
+  
+  const tierBadge = document.getElementById("riskModalTierBadge");
+  tierBadge.textContent = `${row.Risk.toUpperCase()} RISK`;
+  tierBadge.className = `badge-pill ${row.Risk === "High" ? "badge-high" : (row.Risk === "Medium" ? "badge-medium" : "badge-low")}`;
+
+  document.getElementById("riskModalDriverIcon").textContent = diag.driverIcon;
+  document.getElementById("riskModalDriverText").textContent = diag.primaryDriver;
+
+  document.getElementById("riskModalTemp").textContent = `${row.Temperature} °C`;
+  const tempStatusEl = document.getElementById("riskModalTempStatus");
+  tempStatusEl.textContent = diag.tempStatus;
+  tempStatusEl.className = `risk-param-status ${row.Temperature >= 35 ? "risk-alert-text" : (row.Temperature >= 30 ? "risk-warning-text" : "")}`;
+
+  document.getElementById("riskModalRain").textContent = `${row.Rainfall} mm`;
+  const rainStatusEl = document.getElementById("riskModalRainStatus");
+  rainStatusEl.textContent = diag.rainStatus;
+  rainStatusEl.className = `risk-param-status ${row.Rainfall >= 20 ? "risk-alert-text" : (row.Rainfall >= 8 ? "risk-warning-text" : "")}`;
+
+  document.getElementById("riskModalHum").textContent = `${row.Humidity} %`;
+  document.getElementById("riskModalHumStatus").textContent = diag.humStatus;
+
+  document.getElementById("riskModalAqi").textContent = `${row.AQI}`;
+  const aqiStatusEl = document.getElementById("riskModalAqiStatus");
+  aqiStatusEl.textContent = diag.aqiStatus;
+  aqiStatusEl.className = `risk-param-status ${row.AQI >= 150 ? "risk-alert-text" : (row.AQI >= 100 ? "risk-warning-text" : "")}`;
+
+  document.getElementById("riskModalExplanation").innerHTML = diag.explanation;
+  document.getElementById("riskModalAdvisory").innerHTML = diag.advisory;
+
+  const askAiBtn = document.getElementById("btnAskAiAboutState");
+  if (askAiBtn) {
+    askAiBtn.onclick = () => {
+      closeRiskModal();
+      switchView("assistant");
+      setTimeout(() => {
+        if (typeof window.askAssistantQuery === "function") {
+          window.askAssistantQuery(`Tell me about weather, risk causes and precautions in ${row.State}`);
+        }
+      }, 150);
+    };
+  }
+
+  modal.style.display = "flex";
+};
+
+function closeRiskModal() {
+  const modal = document.getElementById("riskModal");
+  if (modal) modal.style.display = "none";
+}
+
+function setupRiskModal() {
+  document.getElementById("btnRiskModalClose")?.addEventListener("click", closeRiskModal);
+  document.getElementById("btnRiskModalCloseFooter")?.addEventListener("click", closeRiskModal);
+  document.getElementById("riskModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "riskModal") closeRiskModal();
   });
 }
