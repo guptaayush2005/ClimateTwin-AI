@@ -1,21 +1,8 @@
-import pandas as pd
-import random
+"""
+ClimateTwin AI - Root Add AQI Risk Script
+Delegates to backend.data_pipeline.add_aqi_risk
+"""
+from backend.data_pipeline.add_aqi_risk import main
 
-df = pd.read_csv("data/climate_data.csv")
-
-df["AQI"] = [random.randint(50, 180) for _ in range(len(df))]
-
-risk = []
-for temp in df["Temperature"]:
-    if temp >= 35:
-        risk.append("High")
-    elif temp >= 30:
-        risk.append("Medium")
-    else:
-        risk.append("Low")
-
-df["Risk"] = risk
-
-df.to_csv("data/climate_data.csv", index=False)
-
-print("AQI and Risk added successfully!")
+if __name__ == "__main__":
+    main()

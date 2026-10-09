@@ -1,19 +1,8 @@
-import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
-import joblib
+"""
+ClimateTwin AI - Root Train Model Script
+Delegates to backend.models.train_model
+"""
+from backend.models.train_model import train
 
-df = pd.read_csv("data/climate_data.csv")
-
-X = df[["Rainfall", "Humidity", "AQI"]]
-y = df["Temperature"]
-
-model = RandomForestRegressor(
-    n_estimators=200,
-    random_state=42
-)
-
-model.fit(X, y)
-
-joblib.dump(model, "models/saved_model.pkl")
-
-print("Model Trained Successfully!")
+if __name__ == "__main__":
+    train()

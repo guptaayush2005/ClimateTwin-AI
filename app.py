@@ -1,8 +1,19 @@
-from styles import apply_theme
-apply_theme()
-
+"""
+ClimateTwin AI - Main Application Entrypoint
+Integrates Frontend design system, Multilingual Internationalization,
+and Backend analytical services with Streamlit navigation.
+"""
 import streamlit as st
-import subprocess
+from frontend.styles import apply_theme
+from frontend.i18n.language_manager import init_language, t
+from frontend.components.sidebar import render_sidebar
+from frontend.views.home_view import render_home_view
+from frontend.views.dashboard_view import render_dashboard_view
+from frontend.views.predictions_view import render_predictions_view
+from frontend.views.analytics_view import render_analytics_view
+from frontend.views.simulation_view import render_simulation_view
+from frontend.views.risk_view import render_risk_view
+from frontend.views.reports_view import render_reports_view
 
 # ---------------- PAGE CONFIG ----------------
 st.set_page_config(
@@ -12,88 +23,27 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ---------------- SIDEBAR ----------------
-if st.sidebar.button("🔄 Update NASA Climate Data"):
-    with st.spinner("Updating climate data from NASA..."):
-        subprocess.run(["python", "fetch_data.py"])
-    st.success("✅ Climate data updated successfully!")
-    st.rerun()
+# ---------------- INITIALIZE LOCALIZATION & THEME ----------------
+init_language()
+apply_theme()
 
-st.sidebar.image("assets/logo.png", width=150)
+# ---------------- SIDEBAR CONTROLS ----------------
+render_sidebar()
 
-st.sidebar.title("🌍 ClimateTwin AI")
-st.sidebar.success("AI-Powered Digital Twin of India's Climate")
+# ---------------- DYNAMIC PROGRAMMATIC NAVIGATION ----------------
+nav_pages = {
+    t("nav_section_main"): [
+        st.Page(render_home_view, title=t("nav_home"), icon="🌍", default=True),
+        st.Page(render_dashboard_view, title=t("nav_dashboard"), icon="📊"),
+        st.Page(render_predictions_view, title=t("nav_predictions"), icon="🤖"),
+    ],
+    t("nav_section_intelligence"): [
+        st.Page(render_analytics_view, title=t("nav_analytics"), icon="📈"),
+        st.Page(render_simulation_view, title=t("nav_simulation"), icon="🌦"),
+        st.Page(render_risk_view, title=t("nav_risk"), icon="🚨"),
+        st.Page(render_reports_view, title=t("nav_reports"), icon="📄"),
+    ]
+}
 
-st.sidebar.markdown("""
-- 📊 Dashboard
-- 🤖 AI Predictions
-- 📈 Analytics
-- 🌦 Climate Simulation
-- 📄 Reports
-- 🚨 Risk Intelligence
-""")
-
-# ---------------- HERO SECTION ----------------
-st.markdown("""
-<div style="
-text-align:center;
-padding:40px;
-background: linear-gradient(135deg, #0f172a, #1e3a8a);
-border-radius:20px;
-color:white;
-box-shadow:0 10px 30px rgba(0,0,0,0.3);
-">
-
-<h1 style="font-size:48px; margin-bottom:10px;">
-🌍 ClimateTwin AI
-</h1>
-
-<p style="font-size:20px; opacity:0.9;">
-AI-Powered Digital Twin of India's Climate System
-</p>
-
-<p style="font-size:14px; opacity:0.7;">
-Real-time Monitoring • AI Predictions • Risk Intelligence • Climate Simulation
-</p>
-
-</div>
-""", unsafe_allow_html=True)
-
-st.write("")
-
-# ---------------- METRICS ----------------
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    st.metric("Temperature", "28.6°C", "+2.4°C")
-
-with col2:
-    st.metric("Rainfall", "125 mm", "+18%")
-
-with col3:
-    st.metric("Humidity", "65%", "-5%")
-
-with col4:
-    st.metric("AQI", "72", "Moderate")
-
-st.divider()
-
-# ---------------- FEATURES ----------------
-st.markdown("""
-## 🚀 Platform Features
-
-✔ Real-time Climate Monitoring  
-✔ AI-based Predictions  
-✔ Heatwave & Flood Risk Analysis  
-✔ Climate Simulation Engine  
-✔ Risk Intelligence Dashboard  
-✔ Analytics & Insights  
-✔ PDF & CSV Reports  
-""")
-
-# ---------------- INFO BOX ----------------
-st.info("""
-🌍 ClimateTwin AI integrates real climate data + AI models
-to help in disaster prediction, environmental analysis
-and policy decision support system.
-""")
+pg = st.navigation(nav_pages)
+pg.run()

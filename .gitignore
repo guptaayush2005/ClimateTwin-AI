@@ -1,0 +1,25 @@
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Vercel deployment artifacts
+.vercel/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs & temp files
+*.log
+scratch/
+tmp/

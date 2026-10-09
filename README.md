@@ -108,16 +108,36 @@ The project uses:
 ## 🏗️ Project Architecture
 
 ```text
-NASA POWER API
-       ↓
-fetch_data.py
-       ↓
-climate_data.csv
-       ↓
-Dashboard & Analytics
-       ↓
-Reports & Risk Intelligence
+NASA POWER API / Real-time Telemetry
+               ↓
+┌──────────────────────────────────────────────┐
+│                   BACKEND                    │
+│  • Services (Data, ML, Risk, Reports, NASA)  │
+│  • ML Predictor & Training Pipelines         │
+│  • Multilingual AI Assistant Engine          │
+└──────────────────────┬───────────────────────┘
+                       ↓
+┌──────────────────────────────────────────────┐
+│                   FRONTEND                   │
+│  • Internationalization (i18n): EN/HI/MR/BN  │
+│  • Component Design System (Glassmorphic)    │
+│  • Views: Dashboard, Predict, Sim, Risk, Rep │
+│  • Dynamic Streamlit Navigation Routing      │
+└──────────────────────────────────────────────┘
 ```
+
+---
+
+## 🌐 Multilingual Support (बहुभाषी समर्थन)
+
+ClimateTwin AI now natively supports multiple Indian languages:
+- 🇬🇧 **English**
+- 🇮🇳 **हिन्दी (Hindi)**
+- 🇮🇳 **मराठी (Marathi)**
+- 🇮🇳 **বাংলা (Bengali)**
+- 🇮🇳 **தமிழ் (Tamil)**
+
+Users can switch languages on-the-fly from the sidebar, updating UI titles, KPI metrics, chart labels, early warning alerts, and the AI Climate Assistant response language.
 
 ---
 
@@ -126,31 +146,72 @@ Reports & Risk Intelligence
 ```text
 ClimateTwin-AI/
 │
-├── app.py
-├── fetch_data.py
-├── styles.py
-├── requirements.txt
+├── backend/                              # Complete Backend Subsystem
+│   ├── __init__.py
+│   ├── config.py                         # Unified configs, paths & thresholds
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── data_service.py               # Data loading, metrics & CSV export
+│   │   ├── ml_service.py                 # 7-day forecast & scenario simulation
+│   │   ├── risk_service.py               # Heatwave, rain & AQI risk intelligence
+│   │   ├── report_service.py             # Professional PDF dossier generation
+│   │   ├── assistant_service.py          # Multilingual AI query processor
+│   │   └── nasa_service.py               # NASA POWER API client & real-time sync
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── train_model.py                # RandomForest model training pipeline
+│   │   ├── predict.py                    # ClimatePredictor inference engine
+│   │   └── saved_model.pkl               # Trained model weights
+│   └── data_pipeline/
+│       ├── __init__.py
+│       ├── fetch_data.py                 # NASA ingestion pipeline script
+│       └── add_aqi_risk.py               # AQI & risk classification pipeline
 │
-├── data/
-│   ├── climate_data.csv
-│   └── state_coordinates.csv
+├── frontend/                             # Complete Frontend Subsystem
+│   ├── __init__.py
+│   ├── styles.py                         # Modern design system & CSS themes
+│   ├── i18n/
+│   │   ├── __init__.py
+│   │   ├── translations.py               # Multilingual translation dictionaries
+│   │   └── language_manager.py           # Language state & `t()` translation helper
+│   ├── components/
+│   │   ├── __init__.py
+│   │   ├── sidebar.py                    # Multilingual sidebar with NASA sync
+│   │   ├── hero.py                       # Glassmorphic hero banner
+│   │   ├── metrics.py                    # KPI cards layout
+│   │   ├── charts.py                     # Plotly maps, bar & line charts
+│   │   └── alerts.py                     # Early warning alert notices
+│   └── views/
+│       ├── __init__.py
+│       ├── home_view.py                  # Landing page
+│       ├── dashboard_view.py             # Climate Intelligence dashboard
+│       ├── predictions_view.py           # 7-day AI temperature forecasting
+│       ├── analytics_view.py             # Statistical distributions & charts
+│       ├── simulation_view.py            # What-If scenario simulation
+│       ├── risk_view.py                  # Early warning risk intelligence
+│       └── reports_view.py               # Verifiable PDF & CSV reporting
 │
-├── models/
-│   ├── predict.py
-│   ├── train_model.py
-│   └── saved_model.pkl
-│
-├── pages/
+├── pages/                                # Streamlit Multipage Routes (Forwarding)
 │   ├── _Dashboard.py
 │   ├── _AI_Predictions.py
 │   ├── _Analytics.py
 │   ├── _Climate_Simulation.py
+│   ├── _Risk_Intelligence.py
 │   ├── _Reports.py
-│   ├── _PDF_Report.py
-│   └── _Risk_Intelligence.py
+│   └── _PDF_Report.py
 │
-└── assets/
-    └── logo.png
+├── data/                                 # Climate Datasets
+│   ├── climate_data.csv
+│   └── state_coordinates.csv
+│
+├── assets/
+│   └── logo.png
+│
+├── app.py                                # Main Application Entrypoint
+├── styles.py                             # Root styles bridge
+├── fetch_data.py                         # Root data fetch bridge
+├── add_aqi_risk.py                       # Root risk calculation bridge
+└── requirements.txt                      # Project dependencies
 ```
 
 ---

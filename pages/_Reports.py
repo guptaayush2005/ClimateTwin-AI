@@ -1,23 +1,13 @@
-from styles import apply_theme
+"""
+ClimateTwin AI - Reports Page (Multipage Route)
+Delegates to frontend.views.reports_view
+"""
+from frontend.styles import apply_theme
+from frontend.i18n.language_manager import init_language
+from frontend.components.sidebar import render_sidebar
+from frontend.views.reports_view import render_reports_view
+
+init_language()
 apply_theme()
-import streamlit as st
-import pandas as pd
-
-st.title("📄 Reports")
-
-# Load data
-df = pd.read_csv("data/climate_data.csv")
-
-# Download Button
-st.download_button(
-    "📥 Download Climate Dataset CSV",
-    df.to_csv(index=False),
-    file_name="climate_data.csv",
-    mime="text/csv"
-)
-
-st.divider()
-
-# Show Data
-st.subheader("📊 Climate Dataset")
-st.dataframe(df)
+render_sidebar()
+render_reports_view()
