@@ -66,6 +66,10 @@
           <span class="nav-icon">🤖</span>
           <span class="nav-text" data-i18n="nav_predictions">AI Predictions</span>
         </li>
+        <li class="nav-item" data-view="assistant">
+          <span class="nav-icon">💬</span>
+          <span class="nav-text" data-i18n="nav_assistant">AI Assistant</span>
+        </li>
         <li class="nav-item" data-view="analytics">
           <span class="nav-icon">📈</span>
           <span class="nav-text" data-i18n="nav_analytics">Analytics</span>
@@ -284,17 +288,100 @@
         </div>
       </section>
 
-      <!-- VIEW 4: ANALYTICS -->
-      <section id="view-analytics" class="view-panel">
-        <div class="card-glass" style="margin-bottom: 24px;">
-          <h2 data-i18n="nav_analytics">Climate Analytics</h2>
-          <p style="font-size: 0.85rem; color: var(--text-muted);">Statistical distributions and risk breakdowns across India.</p>
+      <!-- VIEW 3.5: AI ASSISTANT -->
+      <section id="view-assistant" class="view-panel">
+        <div class="card-glass assistant-header-card" style="margin-bottom: 20px;">
+          <div>
+            <h2 data-i18n="assistant_page_title">AI Climate Assistant</h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="assistant_page_subtitle">Interactive Natural Language Copilot for Indian Climate Telemetry & Disaster Advisory</p>
+          </div>
+          <div>
+            <span class="assistant-status-pill" data-i18n="assistant_badge_online">🟢 Telemetry Copilot Online • Grounded in NASA Satellite Data</span>
+          </div>
         </div>
 
-        <div class="charts-row">
+        <!-- Quick Prompts Section -->
+        <div class="card-glass" style="margin-bottom: 20px;">
+          <div class="prompt-chips-title" data-i18n="assistant_prompt_chips_title">Suggested Inquiries & Quick Prompts:</div>
+          <div class="prompt-chips-list">
+            <button class="prompt-chip" data-prompt="hottest" data-i18n="chip_hottest">🔥 Hottest State?</button>
+            <button class="prompt-chip" data-prompt="rainfall" data-i18n="chip_rainfall">🌧️ Highest Rainfall?</button>
+            <button class="prompt-chip" data-prompt="aqi" data-i18n="chip_worst_aqi">🌫️ Worst Air Quality?</button>
+            <button class="prompt-chip" data-prompt="risk" data-i18n="chip_high_risk">🚨 High Risk States</button>
+            <button class="prompt-chip" data-prompt="precautions" data-i18n="chip_precautions">🛡️ Safety Advisory & Tips</button>
+            <button class="prompt-chip" data-prompt="summary" data-i18n="chip_summary">📊 National Climate Summary</button>
+          </div>
+
+          <!-- State Weather Quick Select -->
+          <div style="margin-top: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">📍 Inquire by State:</span>
+            <select id="assistantStateSelect" class="custom-select" style="max-width: 260px; padding: 7px 12px; font-size: 0.85rem;">
+              <option value="">-- Choose Indian State / UT --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Conversational Chat Area -->
+        <div class="card-glass" style="margin-bottom: 20px; padding: 18px;">
+          <div id="assistantChatHistory" class="chat-container">
+            <!-- Initial Welcome Message from Bot -->
+            <div class="chat-message bot">
+              <div class="chat-avatar bot">🤖</div>
+              <div class="chat-bubble bot">
+                <p><strong data-i18n="chat_welcome_title">Welcome to ClimateTwin AI Copilot!</strong></p>
+                <p data-i18n="chat_welcome_text">Ask me anything about Indian states, temperatures, monsoon rainfall, AQI pollution levels, heatwave risks, or disaster safety precautions.</p>
+                <div style="margin-top: 8px; font-size: 0.8rem; color: var(--accent-cyan);">
+                  ⚡ <em>Supports English, हिन्दी (Hindi), मराठी (Marathi), বাংলা (Bengali), and தமிழ் (Tamil).</em>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chat Input Bar -->
+          <div class="chat-input-container" style="margin-top: 16px;">
+            <input id="assistantChatInput" type="text" class="chat-input" placeholder="Type your query in English, Hindi, Hinglish, Marathi, Bengali, or Tamil..." data-i18n-placeholder="chat_input_placeholder" />
+            <button id="btnSendChat" class="btn-primary" data-i18n="btn_send">Send Message</button>
+            <button id="btnClearChat" class="btn-secondary" data-i18n="btn_clear_chat">Clear Chat</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 4: ANALYTICS -->
+      <section id="view-analytics" class="view-panel">
+        <div class="card-glass" style="margin-bottom: 20px;">
+          <h2 data-i18n="analytics_page_title">Comprehensive Climate Analytics</h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="analytics_page_subtitle">Statistical distributions, state rankings, and composite vulnerability metrics across India.</p>
+        </div>
+
+        <!-- 4 KPI Summary Cards -->
+        <div class="analytics-kpi-grid">
+          <div class="card-glass metric-card">
+            <div class="metric-header"><span class="metric-label">Thermal Disparity</span><span>🌡️</span></div>
+            <div id="kpiThermalRange" class="metric-value">20.7 °C</div>
+            <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 4px;">Spread: 13.9°C (Sikkim) to 34.6°C (Punjab)</div>
+          </div>
+          <div class="card-glass metric-card">
+            <div class="metric-header"><span class="metric-label">Aggregated Rain</span><span>🌧️</span></div>
+            <div id="kpiAggRain" class="metric-value">304.5 mm</div>
+            <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 4px;">Recorded across 28 active telemetry stations</div>
+          </div>
+          <div class="card-glass metric-card">
+            <div class="metric-header"><span class="metric-label">Moisture Saturation</span><span>💧</span></div>
+            <div id="kpiAvgHumidity" class="metric-value">74.2 %</div>
+            <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 4px;">National relative humidity mean</div>
+          </div>
+          <div class="card-glass metric-card">
+            <div class="metric-header"><span class="metric-label">High-Risk Ratio</span><span>🚨</span></div>
+            <div id="kpiRiskRatio" class="metric-value">42.8 %</div>
+            <div style="font-size: 0.75rem; color: var(--accent-red); margin-top: 4px; font-weight: 600;">12 States exceeding critical thresholds</div>
+          </div>
+        </div>
+
+        <!-- Charts Grid 1: Rainfall & Risk -->
+        <div class="charts-row" style="margin-bottom: 20px;">
           <div class="card-glass chart-box">
-            <h3 data-i18n="top_rainfall_states">Rainfall Rankings</h3>
-            <div style="flex-grow: 1; position: relative;"><canvas id="rainfallChart"></canvas></div>
+            <h3 data-i18n="top_rainfall_states">Top Rainfall States</h3>
+            <div style="flex-grow: 1; position: relative;"><canvas id="analyticsRainfallChart"></canvas></div>
           </div>
           <div class="card-glass chart-box">
             <h3 data-i18n="risk_distribution">Climate Risk Distribution</h3>
@@ -302,10 +389,50 @@
           </div>
         </div>
 
-        <div class="card-glass" style="margin-top: 24px; text-align: right;">
-          <a href="/api/export-csv" download="climate_data.csv" class="btn-primary" style="text-decoration: none; display: inline-block;">
-            📥 <span data-i18n="export_csv">Download CSV</span>
-          </a>
+        <!-- Charts Grid 2: AQI Pollution Rankings -->
+        <div class="card-glass chart-box" style="margin-bottom: 24px;">
+          <h3 data-i18n="aqi_analysis">Air Quality Index (AQI) Pollution Rankings</h3>
+          <div style="height: 280px; position: relative;"><canvas id="analyticsAqiChart"></canvas></div>
+        </div>
+
+        <!-- National State-by-State Climate Registry (Data Table) -->
+        <div class="card-glass" style="margin-bottom: 24px;">
+          <div class="analytics-table-header">
+            <div>
+              <h3 data-i18n="analytics_table_title">National State-by-State Climate Registry</h3>
+              <p style="font-size: 0.8rem; color: var(--text-muted);">Real-time meteorological telemetry records with interactive filter.</p>
+            </div>
+            <div class="table-filter-group">
+              <input id="analyticsSearchInput" type="text" class="table-search-input" placeholder="Search Indian state by name..." data-i18n-placeholder="search_state_placeholder" />
+              <select id="analyticsRiskFilter" class="table-risk-select">
+                <option value="all" data-i18n="filter_all">All States</option>
+                <option value="High" data-i18n="filter_high">High Risk Only</option>
+                <option value="Medium" data-i18n="filter_medium">Moderate Risk Only</option>
+                <option value="Low" data-i18n="filter_low">Low Risk Only</option>
+              </select>
+              <a href="/api/export-csv" download="climate_data.csv" class="btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px;">
+                📥 <span data-i18n="export_csv">Download CSV</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th data-i18n="th_state">State / UT</th>
+                  <th data-i18n="th_temp">Temperature (°C)</th>
+                  <th data-i18n="th_rain">Rainfall (mm)</th>
+                  <th data-i18n="th_hum">Humidity (%)</th>
+                  <th data-i18n="th_aqi">Air Quality (AQI)</th>
+                  <th data-i18n="th_risk">Risk Tier</th>
+                </tr>
+              </thead>
+              <tbody id="analyticsTableBody">
+                <!-- Dynamically populated rows -->
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 

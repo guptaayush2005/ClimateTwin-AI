@@ -10,6 +10,8 @@ let humidityChartInstance = null;
 let aqiScatterInstance = null;
 let riskPieInstance = null;
 let forecastChartInstance = null;
+let analyticsRainfallChartInstance = null;
+let analyticsAqiChartInstance = null;
 
 /**
  * Initializes or updates Leaflet India Geospatial Risk Map
@@ -291,3 +293,94 @@ function renderForecastChart(forecastDays, stateName) {
     }
   });
 }
+
+/**
+ * Analytics View: Top Rainfall States Bar Chart (Dedicated Instance)
+ */
+function renderAnalyticsRainfallChart(records) {
+  const ctx = document.getElementById("analyticsRainfallChart")?.getContext("2d");
+  if (!ctx) return;
+
+  const sorted = [...records].sort((a, b) => b.Rainfall - a.Rainfall).slice(0, 10);
+  const labels = sorted.map(r => r.State);
+  const values = sorted.map(r => r.Rainfall);
+
+  if (analyticsRainfallChartInstance) analyticsRainfallChartInstance.destroy();
+
+  analyticsRainfallChartInstance = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Rainfall (mm)",
+        data: values,
+        backgroundColor: "rgba(59, 130, 246, 0.8)",
+        borderColor: "#3b82f6",
+        borderWidth: 1.5,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (context) => ` ${context.parsed.y} mm precipitation`
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: "#94a3b8", font: { size: 10 } }, grid: { display: false } },
+        y: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(255, 255, 255, 0.05)" } }
+      }
+    }
+  });
+}
+
+/**
+ * Analytics View: Top Air Pollution (AQI) States Bar Chart
+ */
+function renderAnalyticsAqiChart(records) {
+  const ctx = document.getElementById("analyticsAqiChart")?.getContext("2d");
+  if (!ctx) return;
+
+  const sorted = [...records].sort((a, b) => b.AQI - a.AQI).slice(0, 10);
+  const labels = sorted.map(r => r.State);
+  const values = sorted.map(r => r.AQI);
+  const colors = values.map(v => v >= 150 ? "rgba(239, 68, 68, 0.85)" : (v >= 100 ? "rgba(245, 158, 11, 0.85)" : "rgba(16, 185, 129, 0.85)"));
+
+  if (analyticsAqiChartInstance) analyticsAqiChartInstance.destroy();
+
+  analyticsAqiChartInstance = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Air Quality Index (AQI)",
+        data: values,
+        backgroundColor: colors,
+        borderWidth: 1,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (context) => ` AQI: ${context.parsed.y} (${context.parsed.y >= 150 ? 'Hazardous' : context.parsed.y >= 100 ? 'Moderate' : 'Good'})`
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: "#94a3b8", font: { size: 10 } }, grid: { display: false } },
+        y: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(255, 255, 255, 0.05)" } }
+      }
+    }
+  });
+}
+

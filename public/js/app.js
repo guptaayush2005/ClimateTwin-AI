@@ -81,7 +81,7 @@ function switchView(viewName) {
     panel.classList.toggle("active-view", panel.id === `view-${viewName}`);
   });
 
-  // Re-render map/charts if switching to dashboard or analytics
+  // Re-render map/charts if switching to dashboard, analytics, or assistant
   if (viewName === "dashboard") {
     setTimeout(() => {
       initIndiaMap(allClimateData);
@@ -94,11 +94,15 @@ function switchView(viewName) {
     }, 120);
   } else if (viewName === "analytics") {
     setTimeout(() => {
-      renderRainfallChart(allClimateData);
-      renderRiskPie(allClimateData);
+      renderAnalyticsView();
     }, 100);
   } else if (viewName === "predictions") {
     updateForecastView();
+  } else if (viewName === "assistant") {
+    const chatInput = document.getElementById("assistantChatInput");
+    if (chatInput) chatInput.focus();
+    const chatHistory = document.getElementById("assistantChatHistory");
+    if (chatHistory) chatHistory.scrollTop = chatHistory.scrollHeight;
   }
 }
 
@@ -135,8 +139,10 @@ async function loadData() {
   populateStateSelectors();
   renderHomeView();
   renderDashboardView();
+  renderAnalyticsView();
   renderRiskView();
   renderReportsView();
+  setupAnalyticsFilters();
 }
 
 /**
@@ -201,7 +207,11 @@ function updateAlertsBanner(m) {
  * Populate State Selectors
  */
 function populateStateSelectors() {
-  const selects = [document.getElementById("dashboardStateSelect"), document.getElementById("predictionStateSelect")];
+  const selects = [
+    document.getElementById("dashboardStateSelect"),
+    document.getElementById("predictionStateSelect"),
+    document.getElementById("assistantStateSelect")
+  ];
   const states = [...new Set(allClimateData.map(r => r.State))].sort();
 
   selects.forEach(sel => {
@@ -212,6 +222,11 @@ function populateStateSelectors() {
       optAll.value = "all";
       optAll.textContent = t("all_states");
       sel.appendChild(optAll);
+    } else if (sel.id === "assistantStateSelect") {
+      const optPrompt = document.createElement("option");
+      optPrompt.value = "";
+      optPrompt.textContent = "-- Choose State for Climate Intel --";
+      sel.appendChild(optPrompt);
     }
     states.forEach(st => {
       const opt = document.createElement("option");
@@ -220,6 +235,17 @@ function populateStateSelectors() {
       sel.appendChild(opt);
     });
   });
+
+  const asstStateSelect = document.getElementById("assistantStateSelect");
+  if (asstStateSelect) {
+    asstStateSelect.addEventListener("change", (e) => {
+      const val = e.target.value;
+      if (!val) return;
+      if (typeof window.askAssistantQuery === "function") {
+        window.askAssistantQuery(`Tell me the weather, temperature and risk in ${val}`);
+      }
+    });
+  }
 
   const dashSelect = document.getElementById("dashboardStateSelect");
   if (dashSelect) {
@@ -423,48 +449,261 @@ function setupSimulationControls() {
 }
 
 /**
- * Setup AI Assistant
+ * Markdown to HTML Formatter helper
+ */
+function formatMarkdown(text) {
+  if (!text) return "";
+  let html = text
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    .replace(/\n\n/g, "</p><p>")
+    .replace(/\n/g, "<br/>");
+  return `<p>${html}</p>`;
+}
+
+/**
+ * Fetch Assistant Answer from Backend
+ */
+async function fetchAssistantAnswer(query) {
+  try {
+    const res = await fetch("/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: query, language: currentLanguage })
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return json.message;
+    }
+  } catch (e) {
+    console.warn("Using offline fallback assistant logic.", e);
+  }
+
+  // Fallback rule-based answering
+  const q = query.toLowerCase();
+  if (q.includes("temperature") || q.includes("तापमान") || q.includes("temp") || q.includes("hot")) {
+    return `🌡️ <b>Average Temperature:</b> ${summaryMetrics.avgTemp} °C | 🔥 <b>Hottest State:</b> ${summaryMetrics.hottest.State} (${summaryMetrics.hottest.Temperature}°C)`;
+  } else if (q.includes("rain") || q.includes("वर्षा") || q.includes("बारिश")) {
+    return `🌧️ <b>Average Rainfall:</b> ${summaryMetrics.avgRain} mm | <b>Highest:</b> ${summaryMetrics.rainiest.State} (${summaryMetrics.rainiest.Rainfall} mm)`;
+  } else if (q.includes("aqi") || q.includes("air") || q.includes("हवा")) {
+    return `🌫️ <b>Poorest Air Quality:</b> ${summaryMetrics.worstAqi.State} (AQI: ${summaryMetrics.worstAqi.AQI})`;
+  } else if (q.includes("risk") || q.includes("danger") || q.includes("खतरा")) {
+    return `🚨 <b>High Risk States Count:</b> ${summaryMetrics.highRiskCount} States exceeding critical thresholds.`;
+  } else {
+    return `📍 <b>National Climate Twin:</b> Tracking ${summaryMetrics.totalStates} Indian States with AI early warning models.`;
+  }
+}
+
+/**
+ * Setup AI Assistant (Dashboard Mini + Full-Page Conversational Copilot)
  */
 function setupAssistant() {
-  const btn = document.getElementById("btnAskAssistant");
-  const input = document.getElementById("assistantInput");
-  const respCard = document.getElementById("assistantResponse");
+  // 1. Dashboard mini assistant
+  const miniBtn = document.getElementById("btnAskAssistant");
+  const miniInput = document.getElementById("assistantInput");
+  const miniResp = document.getElementById("assistantResponse");
 
-  const handleAsk = async () => {
-    const query = input.value.trim();
+  const handleMiniAsk = async () => {
+    const query = miniInput?.value.trim();
     if (!query) return;
 
-    respCard.style.display = "block";
-    respCard.textContent = "Analyzing query...";
-
-    try {
-      const res = await fetch("/api/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: query, language: currentLanguage })
-      });
-      if (res.ok) {
-        const json = await res.json();
-        respCard.innerHTML = json.message;
-        return;
-      }
-    } catch (e) {}
-
-    // Fallback rule-based answering
-    const q = query.toLowerCase();
-    if (q.includes("temperature") || q.includes("तापमान") || q.includes("temp")) {
-      respCard.innerHTML = `🌡️ <b>Average Temperature:</b> ${summaryMetrics.avgTemp} °C | 🔥 <b>Hottest:</b> ${summaryMetrics.hottest.State} (${summaryMetrics.hottest.Temperature}°C)`;
-    } else if (q.includes("rain") || q.includes("वर्षा") || q.includes("बारिश")) {
-      respCard.innerHTML = `🌧️ <b>Average Rainfall:</b> ${summaryMetrics.avgRain} mm | <b>Highest:</b> ${summaryMetrics.rainiest.State} (${summaryMetrics.rainiest.Rainfall} mm)`;
-    } else if (q.includes("aqi") || q.includes("air") || q.includes("हवा")) {
-      respCard.innerHTML = `🌫️ <b>Poorest Air Quality:</b> ${summaryMetrics.worstAqi.State} (AQI: ${summaryMetrics.worstAqi.AQI})`;
-    } else {
-      respCard.innerHTML = `📍 <b>National Climate Twin:</b> Tracking ${summaryMetrics.totalStates} Indian States with AI early warning models.`;
+    if (miniResp) {
+      miniResp.style.display = "block";
+      miniResp.textContent = "Analyzing query...";
     }
+    const answer = await fetchAssistantAnswer(query);
+    if (miniResp) miniResp.innerHTML = formatMarkdown(answer);
   };
 
-  btn?.addEventListener("click", handleAsk);
-  input?.addEventListener("keypress", (e) => { if (e.key === "Enter") handleAsk(); });
+  miniBtn?.addEventListener("click", handleMiniAsk);
+  miniInput?.addEventListener("keypress", (e) => { if (e.key === "Enter") handleMiniAsk(); });
+
+  // 2. Full-Page Conversational AI Assistant
+  const chatHistory = document.getElementById("assistantChatHistory");
+  const chatInput = document.getElementById("assistantChatInput");
+  const sendBtn = document.getElementById("btnSendChat");
+  const clearBtn = document.getElementById("btnClearChat");
+
+  function appendMessage(sender, textHtml) {
+    if (!chatHistory) return;
+    const msgDiv = document.createElement("div");
+    msgDiv.className = `chat-message ${sender}`;
+
+    const avatarDiv = document.createElement("div");
+    avatarDiv.className = `chat-avatar ${sender}`;
+    avatarDiv.textContent = sender === "user" ? "👤" : "🤖";
+
+    const bubbleDiv = document.createElement("div");
+    bubbleDiv.className = `chat-bubble ${sender}`;
+    bubbleDiv.innerHTML = textHtml;
+
+    msgDiv.appendChild(avatarDiv);
+    msgDiv.appendChild(bubbleDiv);
+    chatHistory.appendChild(msgDiv);
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+  }
+
+  window.askAssistantQuery = async (queryText) => {
+    if (!queryText) return;
+    appendMessage("user", `<p>${queryText}</p>`);
+
+    // Loading indicator
+    const loadingDiv = document.createElement("div");
+    loadingDiv.className = "chat-message bot";
+    loadingDiv.id = "assistantTypingIndicator";
+    loadingDiv.innerHTML = `
+      <div class="chat-avatar bot">🤖</div>
+      <div class="chat-bubble bot" style="color: var(--text-muted); font-style: italic;">
+        Analyzing real-time satellite telemetry...
+      </div>
+    `;
+    chatHistory.appendChild(loadingDiv);
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+
+    const answer = await fetchAssistantAnswer(queryText);
+    const typingEl = document.getElementById("assistantTypingIndicator");
+    if (typingEl) typingEl.remove();
+
+    appendMessage("bot", formatMarkdown(answer));
+  };
+
+  const handlePageSend = () => {
+    const query = chatInput?.value.trim();
+    if (!query) return;
+    chatInput.value = "";
+    window.askAssistantQuery(query);
+  };
+
+  sendBtn?.addEventListener("click", handlePageSend);
+  chatInput?.addEventListener("keypress", (e) => { if (e.key === "Enter") handlePageSend(); });
+
+  clearBtn?.addEventListener("click", () => {
+    if (!chatHistory) return;
+    chatHistory.innerHTML = `
+      <div class="chat-message bot">
+        <div class="chat-avatar bot">🤖</div>
+        <div class="chat-bubble bot">
+          <p><strong>${t("chat_welcome_title")}</strong></p>
+          <p>${t("chat_welcome_text")}</p>
+          <div style="margin-top: 8px; font-size: 0.8rem; color: var(--accent-cyan);">
+            ⚡ <em>Supports English, हिन्दी (Hindi), मराठी (Marathi), বাংলা (Bengali), and தமிழ் (Tamil).</em>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  // Prompt suggestion chips
+  document.querySelectorAll(".prompt-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const promptType = chip.getAttribute("data-prompt");
+      let promptQuery = "";
+      if (promptType === "hottest") promptQuery = t("chip_hottest");
+      else if (promptType === "rainfall") promptQuery = t("chip_rainfall");
+      else if (promptType === "aqi") promptQuery = t("chip_worst_aqi");
+      else if (promptType === "risk") promptQuery = t("chip_high_risk");
+      else if (promptType === "precautions") promptQuery = t("chip_precautions");
+      else if (promptType === "summary") promptQuery = t("chip_summary");
+
+      if (promptQuery) {
+        window.askAssistantQuery(promptQuery);
+      }
+    });
+  });
+}
+
+/**
+ * Render Comprehensive Analytics View
+ */
+function renderAnalyticsView() {
+  if (!allClimateData.length) return;
+
+  // 1. Calculate Analytical KPIs
+  let minTemp = allClimateData[0], maxTemp = allClimateData[0];
+  let totalRain = 0, totalHum = 0, highRiskCount = 0;
+
+  allClimateData.forEach(r => {
+    if (r.Temperature < minTemp.Temperature) minTemp = r;
+    if (r.Temperature > maxTemp.Temperature) maxTemp = r;
+    totalRain += r.Rainfall;
+    totalHum += r.Humidity;
+    if (r.Risk === "High") highRiskCount++;
+  });
+
+  const range = (maxTemp.Temperature - minTemp.Temperature).toFixed(1);
+  const kpiRangeEl = document.getElementById("kpiThermalRange");
+  if (kpiRangeEl) kpiRangeEl.textContent = `${range} °C`;
+
+  const kpiRainEl = document.getElementById("kpiAggRain");
+  if (kpiRainEl) kpiRainEl.textContent = `${totalRain.toFixed(1)} mm`;
+
+  const kpiHumEl = document.getElementById("kpiAvgHumidity");
+  if (kpiHumEl) kpiHumEl.textContent = `${(totalHum / allClimateData.length).toFixed(1)} %`;
+
+  const kpiRiskRatioEl = document.getElementById("kpiRiskRatio");
+  if (kpiRiskRatioEl) kpiRiskRatioEl.textContent = `${((highRiskCount / allClimateData.length) * 100).toFixed(1)} %`;
+
+  // 2. Render Charts
+  renderAnalyticsRainfallChart(allClimateData);
+  renderRiskPie(allClimateData);
+  renderAnalyticsAqiChart(allClimateData);
+
+  // 3. Render State Registry Table
+  renderAnalyticsTable(allClimateData);
+}
+
+/**
+ * Render State Registry Data Table with Filter & Search
+ */
+function renderAnalyticsTable(dataset) {
+  const tbody = document.getElementById("analyticsTableBody");
+  if (!tbody) return;
+
+  const searchVal = document.getElementById("analyticsSearchInput")?.value.toLowerCase().trim() || "";
+  const riskVal = document.getElementById("analyticsRiskFilter")?.value || "all";
+
+  const filtered = dataset.filter(row => {
+    const matchName = row.State.toLowerCase().includes(searchVal);
+    const matchRisk = riskVal === "all" || row.Risk === riskVal;
+    return matchName && matchRisk;
+  });
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">No matching states found.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(row => {
+    let riskBadgeClass = "badge-low";
+    if (row.Risk === "High") riskBadgeClass = "badge-high";
+    else if (row.Risk === "Medium") riskBadgeClass = "badge-medium";
+
+    let aqiColor = "#10b981";
+    if (row.AQI >= 150) aqiColor = "#ef4444";
+    else if (row.AQI >= 100) aqiColor = "#f59e0b";
+
+    return `
+      <tr class="state-row">
+        <td><strong>📍 ${row.State}</strong></td>
+        <td>${row.Temperature} °C</td>
+        <td>${row.Rainfall} mm</td>
+        <td>${row.Humidity} %</td>
+        <td><span style="color: ${aqiColor}; font-weight: 700;">${row.AQI}</span></td>
+        <td><span class="badge-pill ${riskBadgeClass}">${row.Risk}</span></td>
+      </tr>
+    `;
+  }).join("");
+}
+
+/**
+ * Setup Analytics Table Search and Risk Filter Event Listeners
+ */
+function setupAnalyticsFilters() {
+  const searchInput = document.getElementById("analyticsSearchInput");
+  const riskSelect = document.getElementById("analyticsRiskFilter");
+
+  searchInput?.addEventListener("input", () => renderAnalyticsTable(allClimateData));
+  riskSelect?.addEventListener("change", () => renderAnalyticsTable(allClimateData));
 }
 
 /**
