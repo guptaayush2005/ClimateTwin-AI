@@ -57,7 +57,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 /**
- * Setup SPA Tab Navigation
+ * Setup SPA Tab Navigation & Mobile Drawer
  */
 function setupNavigation() {
   const navItems = document.querySelectorAll(".nav-item");
@@ -67,14 +67,64 @@ function setupNavigation() {
       switchView(view);
     });
   });
+
+  // Mobile Bottom Navigation Buttons
+  const mobileNavBtns = document.querySelectorAll(".mobile-nav-btn");
+  mobileNavBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const view = btn.getAttribute("data-view");
+      if (view) switchView(view);
+    });
+  });
+
+  // Mobile Hamburger Menu & Off-canvas Drawer
+  const menuToggle = document.getElementById("btnMobileMenuToggle");
+  const sidebarClose = document.getElementById("btnSidebarClose");
+  const sidebarOverlay = document.getElementById("sidebarOverlay");
+  const appSidebar = document.getElementById("appSidebar");
+
+  const openDrawer = () => {
+    if (appSidebar) appSidebar.classList.add("open");
+    if (sidebarOverlay) sidebarOverlay.classList.add("open");
+  };
+
+  const closeDrawer = () => {
+    if (appSidebar) appSidebar.classList.remove("open");
+    if (sidebarOverlay) sidebarOverlay.classList.remove("open");
+  };
+
+  if (menuToggle) menuToggle.addEventListener("click", openDrawer);
+  if (sidebarClose) sidebarClose.addEventListener("click", closeDrawer);
+  if (sidebarOverlay) sidebarOverlay.addEventListener("click", closeDrawer);
+
+  // Resize handler for Leaflet Map
+  window.addEventListener("resize", () => {
+    if (currentActiveView === "dashboard" && typeof indiaMap !== "undefined" && indiaMap) {
+      indiaMap.invalidateSize();
+    }
+  });
 }
 
 function switchView(viewName) {
   currentActiveView = viewName;
 
-  // Update nav item active states
+  // Auto-close mobile drawer on view switch
+  const appSidebar = document.getElementById("appSidebar");
+  const sidebarOverlay = document.getElementById("sidebarOverlay");
+  if (appSidebar) appSidebar.classList.remove("open");
+  if (sidebarOverlay) sidebarOverlay.classList.remove("open");
+
+  // Scroll to top of content on view switch on mobile
+  window.scrollTo({ top: 0, behavior: "smooth" });
+
+  // Update desktop nav item active states
   document.querySelectorAll(".nav-item").forEach(item => {
     item.classList.toggle("active", item.getAttribute("data-view") === viewName);
+  });
+
+  // Update mobile bottom nav active states
+  document.querySelectorAll(".mobile-nav-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.getAttribute("data-view") === viewName);
   });
 
   // Update view panel visibility
@@ -101,7 +151,7 @@ function switchView(viewName) {
     updateForecastView();
   } else if (viewName === "assistant") {
     const chatInput = document.getElementById("assistantChatInput");
-    if (chatInput) chatInput.focus();
+    if (chatInput && window.innerWidth > 768) chatInput.focus();
     const chatHistory = document.getElementById("assistantChatHistory");
     if (chatHistory) chatHistory.scrollTop = chatHistory.scrollHeight;
   }

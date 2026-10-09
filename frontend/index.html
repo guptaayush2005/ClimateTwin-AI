@@ -18,20 +18,21 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <!-- App Custom Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.3" />
+  <link rel="stylesheet" href="./css/style.css?v=2.4" />
 </head>
 <body>
 
   <div class="app-container">
 
     <!-- ==================== SIDEBAR ==================== -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="appSidebar">
       <div class="brand-section">
         <div class="brand-logo">🌍</div>
         <div class="brand-text">
           <h2 data-i18n="app_title">ClimateTwin AI</h2>
           <p data-i18n="badge_platform">National Climate Intelligence</p>
         </div>
+        <button id="btnSidebarClose" class="sidebar-close-btn" aria-label="Close menu">&times;</button>
       </div>
 
       <!-- Controls: Language & NASA Sync -->
@@ -93,8 +94,28 @@
       </div>
     </aside>
 
+    <!-- Sidebar Backdrop Overlay (Mobile) -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
     <!-- ==================== MAIN CONTENT ==================== -->
     <main class="main-content">
+
+      <!-- Mobile Topbar Header -->
+      <header class="mobile-topbar">
+        <button id="btnMobileMenuToggle" class="mobile-menu-btn" aria-label="Open Navigation Menu">
+          <span class="hamburger-icon">☰</span>
+        </button>
+        <div class="mobile-topbar-brand">
+          <span class="mobile-brand-icon">🌍</span>
+          <span class="mobile-brand-title">ClimateTwin AI</span>
+        </div>
+        <div class="mobile-topbar-actions">
+          <div class="badge-live-mini">
+            <span class="pulse-dot"></span>
+            <span>LIVE</span>
+          </div>
+        </div>
+      </header>
 
       <!-- Top Header -->
       <header class="top-header">
@@ -626,6 +647,34 @@
     </div>
   </div>
 
+  <!-- Mobile Bottom Navigation (Quick Touch Access) -->
+  <nav class="mobile-bottom-nav">
+    <button class="mobile-nav-btn active" data-view="home" aria-label="Home">
+      <span class="mobile-nav-icon">🏠</span>
+      <span class="mobile-nav-label" data-i18n="nav_home">Home</span>
+    </button>
+    <button class="mobile-nav-btn" data-view="dashboard" aria-label="Dashboard">
+      <span class="mobile-nav-icon">📊</span>
+      <span class="mobile-nav-label" data-i18n="nav_dashboard">Dashboard</span>
+    </button>
+    <button class="mobile-nav-btn" data-view="predictions" aria-label="AI Predictions">
+      <span class="mobile-nav-icon">🤖</span>
+      <span class="mobile-nav-label" data-i18n="nav_predictions">Predict</span>
+    </button>
+    <button class="mobile-nav-btn" data-view="assistant" aria-label="AI Assistant">
+      <span class="mobile-nav-icon">💬</span>
+      <span class="mobile-nav-label" data-i18n="nav_assistant">Assistant</span>
+    </button>
+    <button class="mobile-nav-btn" data-view="analytics" aria-label="Analytics">
+      <span class="mobile-nav-icon">📈</span>
+      <span class="mobile-nav-label" data-i18n="nav_analytics">Analytics</span>
+    </button>
+    <button class="mobile-nav-btn" data-view="risk" aria-label="Risk Intelligence">
+      <span class="mobile-nav-icon">🚨</span>
+      <span class="mobile-nav-label" data-i18n="nav_risk">Risk</span>
+    </button>
+  </nav>
+
   <!-- Leaflet.js for Geospatial Map -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -633,9 +682,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <!-- Application Modules -->
-  <script src="./js/translations.js?v=2.3"></script>
-  <script src="./js/charts.js?v=2.3"></script>
-  <script src="./js/app.js?v=2.3"></script>
+  <script src="./js/translations.js?v=2.4"></script>
+  <script src="./js/charts.js?v=2.4"></script>
+  <script src="./js/app.js?v=2.4"></script>
 
 </body>
 </html>
