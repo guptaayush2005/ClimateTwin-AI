@@ -19,6 +19,7 @@ GEOJSON_FILE = DATA_DIR / "india_states.geojson"
 
 # Model Files
 SAVED_MODEL_FILE = MODELS_DIR / "saved_model.pkl"
+MODEL_TREES_FILE = MODELS_DIR / "model_trees.json"
 
 # NASA POWER API Settings
 NASA_API_BASE_URL = "https://power.larc.nasa.gov/api/temporal/daily/point"
