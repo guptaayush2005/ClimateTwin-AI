@@ -497,26 +497,93 @@ async function fetchAssistantAnswer(query) {
       body: JSON.stringify({ question: query, language: currentLanguage })
     });
     if (res.ok) {
-      const json = await res.json();
-      return json.message;
+      const cType = res.headers.get("content-type") || "";
+      if (cType.includes("application/json")) {
+        const json = await res.json();
+        if (json.message) return json.message;
+      }
     }
   } catch (e) {
     console.warn("Using offline fallback assistant logic.", e);
   }
 
-  // Fallback rule-based answering
-  const q = query.toLowerCase();
-  if (q.includes("temperature") || q.includes("तापमान") || q.includes("temp") || q.includes("hot")) {
-    return `🌡️ <b>Average Temperature:</b> ${summaryMetrics.avgTemp} °C | 🔥 <b>Hottest State:</b> ${summaryMetrics.hottest.State} (${summaryMetrics.hottest.Temperature}°C)`;
-  } else if (q.includes("rain") || q.includes("वर्षा") || q.includes("बारिश")) {
-    return `🌧️ <b>Average Rainfall:</b> ${summaryMetrics.avgRain} mm | <b>Highest:</b> ${summaryMetrics.rainiest.State} (${summaryMetrics.rainiest.Rainfall} mm)`;
-  } else if (q.includes("aqi") || q.includes("air") || q.includes("हवा")) {
-    return `🌫️ <b>Poorest Air Quality:</b> ${summaryMetrics.worstAqi.State} (AQI: ${summaryMetrics.worstAqi.AQI})`;
-  } else if (q.includes("risk") || q.includes("danger") || q.includes("खतरा")) {
-    return `🚨 <b>High Risk States Count:</b> ${summaryMetrics.highRiskCount} States exceeding critical thresholds.`;
-  } else {
-    return `📍 <b>National Climate Twin:</b> Tracking ${summaryMetrics.totalStates} Indian States with AI early warning models.`;
+  // Fallback intelligent natural language answering
+  const q = query.toLowerCase().trim();
+  const lang = currentLanguage || "en";
+
+  // Check if a specific state is mentioned
+  const matchedState = allClimateData.find(s => q.includes(s.State.toLowerCase()));
+  if (matchedState) {
+    if (lang === "hi") {
+      return `📍 **${matchedState.State} मौसम रिपोर्ट:**\n- 🌡️ तापमान: **${matchedState.Temperature}°C**\n- 🌧️ वर्षा: **${matchedState.Rainfall} mm**\n- 💧 आर्द्रता: **${matchedState.Humidity}%**\n- 🌫️ वायु गुणवत्ता (AQI): **${matchedState.AQI}**\n- 🚨 जोखिम श्रेणी: **${matchedState.Risk}**\n\n📌 *एनडीएमए सलाह:* ${matchedState.Risk === 'High' ? 'मौसम परिवर्तनशील है, कृपया आपातकालीन सावधानियां बरतें।' : 'मौसम की स्थिति सामान्य है।'}`;
+    } else if (lang === "mr") {
+      return `📍 **${matchedState.State} हवामान अहवाल:**\n- 🌡️ तापमान: **${matchedState.Temperature}°C**\n- 🌧️ पाऊस: **${matchedState.Rainfall} mm**\n- 💧 आर्द्रता: **${matchedState.Humidity}%**\n- 🌫️ हवा गुणवत्ता (AQI): **${matchedState.AQI}**\n- 🚨 जोखीम स्तर: **${matchedState.Risk}**`;
+    } else if (lang === "bn") {
+      return `📍 **${matchedState.State} আবহাওয়া প্রতিবেদন:**\n- 🌡️ তাপমাত্রা: **${matchedState.Temperature}°C**\n- 🌧️ বৃষ্টিপাত: **${matchedState.Rainfall} mm**\n- 💧 আর্দ্রতা: **${matchedState.Humidity}%**\n- 🌫️ বায়ুর মান (AQI): **${matchedState.AQI}**\n- 🚨 ঝুঁকি স্তর: **${matchedState.Risk}**`;
+    } else if (lang === "ta") {
+      return `📍 **${matchedState.State} வானிலை அறிக்கை:**\n- 🌡️ வெப்பநிலை: **${matchedState.Temperature}°C**\n- 🌧️ மழைப்பொழிவு: **${matchedState.Rainfall} mm**\n- 💧 ஈரப்பதம்: **${matchedState.Humidity}%**\n- 🌫️ காற்றின் தரம் (AQI): **${matchedState.AQI}**\n- 🚨 ஆபத்து நிலை: **${matchedState.Risk}**`;
+    } else {
+      return `📍 **Climate Telemetry for ${matchedState.State}:**\n- 🌡️ Temperature: **${matchedState.Temperature}°C**\n- 🌧️ Precipitation: **${matchedState.Rainfall} mm**\n- 💧 Humidity: **${matchedState.Humidity}%**\n- 🌫️ Air Quality Index (AQI): **${matchedState.AQI}**\n- 🚨 Risk Assessment: **${matchedState.Risk}**\n\n📌 *Advisory:* ${matchedState.Risk === 'High' ? 'Critical conditions detected. Exercise extreme caution.' : 'Conditions are currently within stable baseline parameters.'}`;
+    }
   }
+
+  // Precaution / Safety guidelines
+  if (q.includes("precaution") || q.includes("safety") || q.includes("सावधानी") || q.includes("सुरक्षा") || q.includes("उपाय") || q.includes("flood") || q.includes("heat")) {
+    if (lang === "hi") {
+      return `🛡️ **एनडीएमए जलवायु सुरक्षा दिशानिर्देश:**\n1. **लू/गर्मी से बचाव:** दोपहर 12 बजे से 3 बजे के बीच धूप में निकलने से बचें, ओआरएस व पानी पीएं।\n2. **भारी बारिश/बाढ़:** निचले इलाकों से दूर रहें, जलभराव वाले क्षेत्रों में बिजली के खंभों को न छुएं।\n3. **वायु प्रदूषण (AQI > 150):** बाहर निकलते समय N95 मास्क पहनें और सुबह की सैर सीमित करें।`;
+    } else if (lang === "mr") {
+      return `🛡️ **हवामान सुरक्षा मार्गदर्शक तत्त्वे:**\n1. **उष्णतेची लाट:** भरपूर पाणी प्या आणि दुपारी उन्हात जाणे टाळा.\n2. **मुसळधार पाऊस:** सखल भागातील नागरिकांनी सतर्क राहावे.\n3. **वायू प्रदूषण:** हवेची गुणवत्ता खराब असल्यास मास्क वापरा.`;
+    } else if (lang === "bn") {
+      return `🛡️ **জলবায়ু সুরক্ষা নির্দেশিকা:**\n1. **তাপপ্রবাহ:** প্রচুর জল পান করুন এবং দুপুরের রোদ এড়িয়ে চলুন।\n2. **ভারী বৃষ্টি:** নিচু এলাকা থেকে দূরে থাকুন।\n3. **বায়ু দূষণ:** মাস্ক ব্যবহার করুন।`;
+    } else if (lang === "ta") {
+      return `🛡️ **காலநிலை பாதுகாப்பு வழிகாட்டுதல்கள்:**\n1. **வெப்ப அலை:** போதுமான அளவு தண்ணீர் குடிக்கவும்.\n2. **கனமழை:** தாழ்வான பகுதிகளைத் தவிர்க்கவும்.\n3. **காற்று மாசுபாடு:** மாஸ்க் அணியவும்.`;
+    } else {
+      return `🛡️ **NDMA Climate Safety Protocols:**\n1. **Heatwave Advisory:** Avoid direct sun exposure between 12 PM - 3 PM; maintain hydration with ORS/water.\n2. **Flash Flood / Heavy Rain:** Keep away from low-lying inundated zones and avoid electrical posts.\n3. **Air Quality Alert (AQI > 150):** Wear N95 particulate respirators and avoid vigorous outdoor exercise.`;
+    }
+  }
+
+  // Hottest / Temperature
+  if (q.includes("temperature") || q.includes("तापमान") || q.includes("temp") || q.includes("hot") || q.includes("गर्म")) {
+    if (lang === "hi") {
+      return `🌡️ **राष्ट्रीय तापमान विश्लेषण:**\n- औसत तापमान: **${summaryMetrics.avgTemp} °C**\n- 🔥 सबसे गर्म राज्य: **${summaryMetrics.hottest.State} (${summaryMetrics.hottest.Temperature}°C)**`;
+    } else {
+      return `🌡️ **National Thermal Disparity:**\n- Mean Temperature: **${summaryMetrics.avgTemp} °C**\n- 🔥 Highest Recorded: **${summaryMetrics.hottest.State} (${summaryMetrics.hottest.Temperature}°C)**`;
+    }
+  }
+
+  // Rainfall / Precipitation
+  if (q.includes("rain") || q.includes("वर्षा") || q.includes("बारिश") || q.includes("पाऊस") || q.includes("বৃষ্টি") || q.includes("மழை")) {
+    if (lang === "hi") {
+      return `🌧️ **राष्ट्रीय वर्षा विश्लेषण:**\n- औसत वर्षा: **${summaryMetrics.avgRain} mm**\n- 🌊 सबसे अधिक वर्षा: **${summaryMetrics.rainiest.State} (${summaryMetrics.rainiest.Rainfall} mm)**`;
+    } else {
+      return `🌧️ **National Precipitation Summary:**\n- National Mean: **${summaryMetrics.avgRain} mm**\n- 🌊 Maximum Precipitation: **${summaryMetrics.rainiest.State} (${summaryMetrics.rainiest.Rainfall} mm)**`;
+    }
+  }
+
+  // Air Quality (AQI)
+  if (q.includes("aqi") || q.includes("air") || q.includes("हवा") || q.includes("प्रदूषण") || q.includes("காற்றின்")) {
+    if (lang === "hi") {
+      return `🌫️ **वायु गुणवत्ता सूचकांक (AQI):**\n- सबसे प्रदूषित राज्य: **${summaryMetrics.worstAqi.State} (AQI: ${summaryMetrics.worstAqi.AQI})**\n- स्थिति: गंभीर रूप से अस्वस्थ (खतरनाक श्रेणी)`;
+    } else {
+      return `🌫️ **Air Quality Telemetry:**\n- Highest Pollution State: **${summaryMetrics.worstAqi.State} (AQI: ${summaryMetrics.worstAqi.AQI})**\n- Severity: Exceeds Safe Ambient Air Thresholds`;
+    }
+  }
+
+  // Risk / High risk
+  if (q.includes("risk") || q.includes("danger") || q.includes("खतरा") || q.includes("जोखीम") || q.includes("ঝুঁকি") || q.includes("ஆபத்து")) {
+    const highStates = allClimateData.filter(r => r.Risk === "High").map(r => r.State).slice(0, 5).join(", ");
+    if (lang === "hi") {
+      return `🚨 **उच्च जोखिम वाले राज्य:**\n- कुल **${summaryMetrics.highRiskCount} राज्य** उच्च जोखिम सीमा में हैं।\n- प्रमुख राज्य: **${highStates}** आदि।`;
+    } else {
+      return `🚨 **Vulnerability Risk Intelligence:**\n- Total **${summaryMetrics.highRiskCount} States** exceed critical risk limits.\n- Identified Hotspots: **${highStates}**, etc.`;
+    }
+  }
+
+  // Default national overview
+  if (lang === "hi") {
+    return `🌍 **क्लाइमेटट्विन एआई राष्ट्रीय समीक्षा:**\n- भारत के **${summaryMetrics.totalStates} राज्यों** की सैटेलाइट टेलीमेट्री सक्रिय है।\n- औसत तापमान: **${summaryMetrics.avgTemp}°C** | वर्षा: **${summaryMetrics.avgRain} mm** | उच्च जोखिम: **${summaryMetrics.highRiskCount} राज्य**।`;
+  }
+  return `🌍 **ClimateTwin AI Overview:**\n- Real-time digital twin monitoring **${summaryMetrics.totalStates} Indian States & UTs**.\n- Mean Temp: **${summaryMetrics.avgTemp}°C** | Precipitation: **${summaryMetrics.avgRain} mm** | High-Risk Ratio: **${summaryMetrics.highRiskCount} States**.\n- Ask me about any specific state (e.g. *Bihar*, *Assam*, *Maharashtra*) or disaster safety tips!`;
 }
 
 /**
