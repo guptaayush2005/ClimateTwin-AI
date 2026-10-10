@@ -23,3 +23,8 @@ desktop.ini
 *.log
 scratch/
 tmp/
+
+# Environment secrets
+.env
+.env.local
+.env.*.local

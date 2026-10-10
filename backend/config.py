@@ -32,7 +32,22 @@ GEOJSON_FILE = DATA_DIR / "india_states.geojson"
 SAVED_MODEL_FILE = MODELS_DIR / "saved_model.pkl"
 MODEL_TREES_FILE = MODELS_DIR / "model_trees.json"
 
-# NASA POWER API Settings
+# Environment Variable Loading
+_env_path = BASE_DIR / ".env"
+if _env_path.exists():
+    try:
+        with open(_env_path, "r", encoding="utf-8") as _ef:
+            for _line in _ef:
+                _line = _line.strip()
+                if _line and not _line.startswith("#") and "=" in _line:
+                    _k, _v = _line.split("=", 1)
+                    os.environ.setdefault(_k.strip(), _v.strip())
+    except Exception:
+        pass
+
+# NASA API Settings
+NASA_API_KEY = os.getenv("NASA_API_KEY", "RYdRXs6dzwqJwEwnP4YfZ437N0PhPMqR9F2fSp7w")
+NASA_OPEN_API_BASE_URL = "https://api.nasa.gov"
 NASA_API_BASE_URL = "https://power.larc.nasa.gov/api/temporal/daily/point"
 NASA_PARAMETERS = "T2M,PRECTOTCORR,RH2M"
 NASA_COMMUNITY = "RE"

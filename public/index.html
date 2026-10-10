@@ -191,6 +191,52 @@
             <p style="font-size: 0.9rem;" data-i18n="info_box">ClimateTwin AI integrates authoritative NASA satellite telemetry and machine learning models to empower disaster response agencies, environmental planners, and citizens with actionable climate intelligence.</p>
           </div>
         </div>
+
+        <!-- NASA LIVE SATELLITE TELEMETRY (AUTHENTICATED VIA USER NASA API KEY) -->
+        <div class="card-glass nasa-satellite-card" id="nasaSatelliteCard" style="margin-top: 24px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 1.6rem;">🛰️</span>
+              <div>
+                <h3 style="font-size: 1.15rem; font-weight: 700;">NASA DSCOVR Deep-Space Earth Telemetry</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">Real-time Earth Polychromatic Imaging Camera (EPIC) • Grounded in NASA Satellite Data</p>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="badge-live" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.4); color: #60a5fa;">
+                <span class="pulse-dot" style="background: #60a5fa;"></span>
+                <span id="nasaKeyStatusBadge">NASA KEY: VERIFIED</span>
+              </span>
+              <button id="btnRefreshSatellite" class="btn-secondary-custom" style="padding: 6px 14px; font-size: 0.8rem; cursor: pointer;">
+                🔄 Refresh Feed
+              </button>
+            </div>
+          </div>
+
+          <div class="nasa-satellite-grid">
+            <div style="position: relative; border-radius: 14px; overflow: hidden; background: #000; border: 1px solid var(--border-glass); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; min-height: 280px;">
+              <img id="nasaEpicImg" src="" alt="NASA DSCOVR Earth Telemetry" style="width: 100%; height: 100%; object-fit: cover; display: none;" />
+              <div id="nasaEpicLoading" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px;">
+                <div class="spinner-mini" style="margin: 0 auto 10px;"></div>
+                Streaming Live NASA DSCOVR Earth Telemetry...
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="background: rgba(13, 23, 46, 0.6); padding: 14px; border-radius: 12px; border: 1px solid var(--border-glass);">
+                <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-cyan); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 4px;">Spacecraft & Instrument</div>
+                <div style="font-weight: 600; font-size: 0.95rem;">NOAA DSCOVR / NASA EPIC Camera (Lagrange Point L1 • 1 Million Miles)</div>
+              </div>
+              <div style="background: rgba(13, 23, 46, 0.6); padding: 14px; border-radius: 12px; border: 1px solid var(--border-glass);">
+                <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 4px;">Satellite Capture Timestamp</div>
+                <div id="nasaEpicDate" style="font-weight: 600; font-size: 0.95rem; color: #f8fafc;">Connecting to NASA Telemetry...</div>
+              </div>
+              <div style="background: rgba(13, 23, 46, 0.6); padding: 14px; border-radius: 12px; border: 1px solid var(--border-glass);">
+                <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-green); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 4px;">Live Satellite Mission Status</div>
+                <div id="nasaEpicCaption" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">This real-time image of the sunlit side of Earth was captured by the Earth Polychromatic Imaging Camera (EPIC) aboard the DSCOVR satellite.</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- VIEW 2: DASHBOARD -->

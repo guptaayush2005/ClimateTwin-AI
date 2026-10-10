@@ -26,6 +26,7 @@ from backend.services.assistant_service import (
 )
 from backend.services.nasa_service import (
     sync_nasa_climate_data,
+    fetch_nasa_satellite_telemetry,
 )
 
 __all__ = [
@@ -42,4 +43,5 @@ __all__ = [
     "generate_pdf_report",
     "ask_climate_assistant",
     "sync_nasa_climate_data",
+    "fetch_nasa_satellite_telemetry",
 ]

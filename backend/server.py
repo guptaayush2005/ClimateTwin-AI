@@ -32,8 +32,10 @@ from backend.services.ml_service import (
 )
 from backend.services.risk_service import get_risk_intelligence
 from backend.services.report_service import generate_pdf_report
-from backend.services.assistant_service import ask_climate_assistant
-from backend.services.nasa_service import sync_nasa_climate_data
+from backend.services.nasa_service import (
+    sync_nasa_climate_data,
+    fetch_nasa_satellite_telemetry,
+)
 
 # Initialize FastAPI App
 app = FastAPI(
@@ -191,6 +193,15 @@ def sync_nasa_api():
     """
     result = sync_nasa_climate_data()
     return result
+
+
+@api_router.get("/nasa-satellite")
+def get_nasa_satellite_api():
+    """
+    Fetches real-time satellite imagery and space telemetry from NASA Open APIs
+    (NOAA DSCOVR EPIC Camera & APOD) using user's official NASA API key.
+    """
+    return fetch_nasa_satellite_telemetry()
 
 
 @api_router.post("/ask")
