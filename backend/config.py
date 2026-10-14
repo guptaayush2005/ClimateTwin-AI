@@ -27,6 +27,9 @@ ASSETS_DIR = FRONTEND_DIR / "assets"
 CLIMATE_DATA_FILE = DATA_DIR / "climate_data.csv"
 STATE_COORDINATES_FILE = DATA_DIR / "state_coordinates.csv"
 GEOJSON_FILE = DATA_DIR / "india_states.geojson"
+DISTRICTS_DATA_FILE = DATA_DIR / "districts_climate_data.csv"
+DISTRICTS_JSON_FILE = DATA_DIR / "india_districts.json"
+STATE_DISTRICTS_MAP_FILE = DATA_DIR / "state_districts_map.json"
 
 # Model Files
 SAVED_MODEL_FILE = MODELS_DIR / "saved_model.pkl"

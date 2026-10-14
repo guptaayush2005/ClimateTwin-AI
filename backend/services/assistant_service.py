@@ -4,8 +4,8 @@ Processes natural language climate queries with multilingual understanding and l
 Supports English, Hindi (हिन्दी), Marathi (मराठी), Bengali (বাংলা), Tamil (தமிழ்).
 """
 import pandas as pd
-from typing import Dict, Any, Optional
-from backend.services.data_service import load_climate_data, get_summary_metrics
+from backend.services.data_service import load_climate_data, get_summary_metrics, load_districts_data
+from backend.services.live_weather_service import fetch_live_district_telemetry
 
 
 def ask_climate_assistant(question: str, df: Optional[pd.DataFrame] = None, language: str = "en") -> Dict[str, Any]:
@@ -42,6 +42,55 @@ def ask_climate_assistant(question: str, df: Optional[pd.DataFrame] = None, lang
             "en": "👋 **Hello!** I am the ClimateTwin AI Copilot. You can ask me about temperature, rainfall, humidity, AQI, high-risk states, or specific weather conditions in any Indian state!"
         }
         return {"type": "success", "message": greetings.get(language, greetings["en"])}
+
+    # 0.5 Check Indian Districts First
+    districts_df = load_districts_data()
+    if not districts_df.empty:
+        for _, d_row in districts_df.iterrows():
+            d_name = str(d_row["District"]).lower()
+            d_clean = d_name.split("(")[0].strip()
+            if len(d_clean) > 3 and d_clean in q:
+                state_name = d_row["State"]
+                dist_name = d_row["District"]
+                lat = float(d_row["Latitude"])
+                lon = float(d_row["Longitude"])
+                
+                live = fetch_live_district_telemetry(lat, lon, state=state_name, district=dist_name)
+                temp = live["temperature"]
+                feels = live["apparent_temperature"]
+                rain = live["precipitation"]
+                hum = live["humidity"]
+                wind = live["wind_speed"]
+                aqi = live["aqi"]
+                cond = live["condition_hi"] if language == "hi" else live["condition"]
+                icon = live["icon"]
+                risk = live["risk_level"]
+                hazards = ", ".join(live["hazard_tags"])
+                advice = live["ndma_tips"][0] if live["ndma_tips"] else "मौसम अनुकूल है।"
+
+                if language == "hi":
+                    msg = (
+                        f"📍 **{dist_name} ({state_name}) — लाइव सैटेलाइट मौसम व जलवायु:**\n\n"
+                        f"• {icon} **वर्तमान स्थिति:** {cond}\n"
+                        f"• 🌡️ **तापमान:** **{temp} °C** (महसूस: {feels} °C)\n"
+                        f"• 🌧️ **वर्षा:** **{rain} mm** | 💧 **आर्द्रता:** **{hum} %**\n"
+                        f"• 💨 **हवा की गति:** **{wind} km/h**\n"
+                        f"• 🌫️ **वायु गुणवत्ता (AQI):** **{aqi}** ({live['aqi_category']})\n"
+                        f"• 🚨 **जोखिम स्तर:** **{risk} Risk** ({hazards})\n\n"
+                        f"🛡️ **सुरक्षा परामर्श:** {advice}"
+                    )
+                else:
+                    msg = (
+                        f"📍 **{dist_name} ({state_name}) — Real-Time Climate Telemetry:**\n\n"
+                        f"• {icon} **Condition:** {cond}\n"
+                        f"• 🌡️ **Temperature:** **{temp} °C** (Feels like {feels} °C)\n"
+                        f"• 🌧️ **Precipitation:** **{rain} mm** | 💧 **Humidity:** **{hum} %**\n"
+                        f"• 💨 **Wind Speed:** **{wind} km/h**\n"
+                        f"• 🌫️ **Air Quality (AQI):** **{aqi}** ({live['aqi_category']})\n"
+                        f"• 🚨 **Vulnerability Risk:** **{risk} Risk** ({hazards})\n\n"
+                        f"🛡️ **NDMA Precaution:** {advice}"
+                    )
+                return {"type": "success", "message": msg}
 
     # 1. Specific State Query Check
     for _, row in df.iterrows():

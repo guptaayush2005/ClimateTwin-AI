@@ -24,6 +24,11 @@ from backend.services.data_service import (
     get_summary_metrics,
     get_high_risk_states_df,
     export_dataframe_to_csv,
+    load_districts_data,
+    get_state_districts_map,
+    get_districts_for_state,
+    get_district_record,
+    search_locations,
 )
 from backend.services.ml_service import (
     predict_temperature,
@@ -36,6 +41,8 @@ from backend.services.nasa_service import (
     sync_nasa_climate_data,
     fetch_nasa_satellite_telemetry,
 )
+from backend.services.live_weather_service import fetch_live_district_telemetry
+from backend.services.assistant_service import ask_climate_assistant
 
 # Initialize FastAPI App
 app = FastAPI(
@@ -124,6 +131,75 @@ def get_states_api():
     """
     states = get_states_list()
     return {"states": states}
+
+
+@api_router.get("/districts")
+def get_districts_api(state: Optional[str] = None, district: Optional[str] = None):
+    """
+    Returns Indian districts climate data, optionally filtered by state and/or district.
+    """
+    df = load_districts_data(state=state, district=district)
+    return {
+        "count": len(df),
+        "data": df.to_dict(orient="records")
+    }
+
+
+@api_router.get("/state-districts-map")
+def get_state_districts_map_api():
+    """
+    Returns complete state-to-districts mapping across all 36 States/UTs.
+    """
+    mapping = get_state_districts_map()
+    return {"map": mapping, "total_states": len(mapping)}
+
+
+@api_router.get("/live-district")
+def get_live_district_api(
+    state: Optional[str] = None,
+    district: Optional[str] = None,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None
+):
+    """
+    Fetches real-time live satellite & station telemetry (current temp, humidity, precipitation,
+    wind, weather condition, US AQI, PM2.5, PM10, NDMA tips) for any Indian district.
+    """
+    target_lat = lat
+    target_lon = lon
+    target_state = state or ""
+    target_district = district or ""
+
+    if (target_lat is None or target_lon is None) and target_district:
+        rec = get_district_record(state=target_state, district=target_district)
+        if rec:
+            target_lat = rec.get("Latitude")
+            target_lon = rec.get("Longitude")
+            target_state = rec.get("State", target_state)
+            target_district = rec.get("District", target_district)
+
+    if target_lat is None or target_lon is None:
+        target_lat = 26.8467
+        target_lon = 80.9462
+        target_district = target_district or "Lucknow"
+        target_state = target_state or "Uttar Pradesh"
+
+    telemetry = fetch_live_district_telemetry(
+        lat=float(target_lat),
+        lon=float(target_lon),
+        state=target_state,
+        district=target_district
+    )
+    return telemetry
+
+
+@api_router.get("/search-locations")
+def search_locations_api(q: str = Query(..., min_length=1)):
+    """
+    Instantly searches across all 786 districts and 36 states with auto-completion.
+    """
+    results = search_locations(q)
+    return {"query": q, "count": len(results), "results": results}
 
 
 @api_router.get("/summary")

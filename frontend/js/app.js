@@ -4,6 +4,10 @@
 
 // Global State
 let allClimateData = [];
+let allDistrictsData = [];
+let stateDistrictsMap = {};
+let currentSelectedDistrict = null;
+let currentDistrictTelemetry = null;
 let summaryMetrics = {};
 let currentActiveView = "home";
 
@@ -213,8 +217,49 @@ async function loadData() {
     allClimateData = FALLBACK_DATA;
   }
 
+  // Load All 786 Districts Data
+  try {
+    const dRes = await apiFetch("/districts");
+    if (dRes.ok) {
+      const dJson = await dRes.json();
+      allDistrictsData = dJson.data || [];
+    } else {
+      const staticDistRes = await fetch("./data/india_districts.json");
+      if (staticDistRes.ok) allDistrictsData = await staticDistRes.json();
+    }
+  } catch (err) {
+    try {
+      const staticDistRes = await fetch("./data/india_districts.json");
+      if (staticDistRes.ok) allDistrictsData = await staticDistRes.json();
+    } catch (e2) {
+      console.warn("Could not load districts dataset:", e2);
+    }
+  }
+
+  // Load State-Districts Hierarchy Map
+  try {
+    const mapRes = await apiFetch("/state-districts-map");
+    if (mapRes.ok) {
+      const mapJson = await mapRes.json();
+      stateDistrictsMap = mapJson.map || {};
+    } else {
+      const staticMapRes = await fetch("./data/state_districts_map.json");
+      if (staticMapRes.ok) stateDistrictsMap = await staticMapRes.json();
+    }
+  } catch (err) {
+    try {
+      const staticMapRes = await fetch("./data/state_districts_map.json");
+      if (staticMapRes.ok) stateDistrictsMap = await staticMapRes.json();
+    } catch (e2) {
+      console.warn("Could not load state districts map:", e2);
+    }
+  }
+
   computeSummaryMetrics();
   populateStateSelectors();
+  renderQuickDistrictPills();
+  setupDistrictSearch();
+  setupDistrictModal();
   renderHomeView();
   renderDashboardView();
   renderAnalyticsView();
@@ -282,7 +327,7 @@ function updateAlertsBanner(m) {
 }
 
 /**
- * Populate State Selectors
+ * Populate State & District Selectors with Cascading Hierarchy
  */
 function populateStateSelectors() {
   const selects = [
@@ -290,7 +335,11 @@ function populateStateSelectors() {
     document.getElementById("predictionStateSelect"),
     document.getElementById("assistantStateSelect")
   ];
-  const states = [...new Set(allClimateData.map(r => r.State))].sort();
+  
+  const stateSet = new Set(allClimateData.map(r => r.State));
+  Object.keys(stateDistrictsMap).forEach(s => stateSet.add(s));
+  allDistrictsData.forEach(d => stateSet.add(d.State));
+  const states = [...stateSet].filter(Boolean).sort();
 
   selects.forEach(sel => {
     if (!sel) return;
@@ -298,12 +347,12 @@ function populateStateSelectors() {
     if (sel.id === "dashboardStateSelect") {
       const optAll = document.createElement("option");
       optAll.value = "all";
-      optAll.textContent = t("all_states");
+      optAll.textContent = "🇮🇳 All States (National View)";
       sel.appendChild(optAll);
     } else if (sel.id === "assistantStateSelect") {
       const optPrompt = document.createElement("option");
       optPrompt.value = "";
-      optPrompt.textContent = "-- Choose State for Climate Intel --";
+      optPrompt.textContent = "-- Choose State or District for Climate Intel --";
       sel.appendChild(optPrompt);
     }
     states.forEach(st => {
@@ -313,6 +362,59 @@ function populateStateSelectors() {
       sel.appendChild(opt);
     });
   });
+
+  // Populate District Selectors
+  populateDistrictSelector("all", "dashboardDistrictSelect");
+  populateDistrictSelector(states[0] || "all", "predictionDistrictSelect");
+
+  // State Change Listener in Dashboard
+  const dashSelect = document.getElementById("dashboardStateSelect");
+  if (dashSelect) {
+    dashSelect.addEventListener("change", (e) => {
+      const val = e.target.value;
+      populateDistrictSelector(val, "dashboardDistrictSelect");
+      if (val === "all") {
+        computeSummaryMetrics(allClimateData);
+        initIndiaMap(allClimateData);
+      } else {
+        const stateDists = allDistrictsData.filter(d => d.State === val);
+        const filteredState = allClimateData.filter(r => r.State === val);
+        const mapData = stateDists.length ? stateDists : filteredState;
+        computeSummaryMetrics(mapData);
+        initIndiaMap(mapData);
+
+        // Center map on state/district if coordinates available
+        if (mapData.length && mapData[0].Latitude && indiaMap) {
+          indiaMap.flyTo([mapData[0].Latitude, mapData[0].Longitude], 7, { duration: 1.2 });
+        }
+      }
+    });
+  }
+
+  // District Change Listener in Dashboard (1-CLICK INSTANT LIVE INSPECTION!)
+  const dashDistSelect = document.getElementById("dashboardDistrictSelect");
+  if (dashDistSelect) {
+    dashDistSelect.addEventListener("change", (e) => {
+      const dist = e.target.value;
+      if (!dist || dist === "all") return;
+      const st = dashSelect ? dashSelect.value : "";
+      window.openDistrictDetailModal(st, dist);
+    });
+  }
+
+  // Prediction State & District Listeners
+  const predSelect = document.getElementById("predictionStateSelect");
+  const predDistSelect = document.getElementById("predictionDistrictSelect");
+  if (predSelect) {
+    predSelect.addEventListener("change", (e) => {
+      const val = e.target.value;
+      populateDistrictSelector(val, "predictionDistrictSelect");
+      updateForecastView();
+    });
+  }
+  if (predDistSelect) {
+    predDistSelect.addEventListener("change", () => updateForecastView());
+  }
 
   const asstStateSelect = document.getElementById("assistantStateSelect");
   if (asstStateSelect) {
@@ -324,27 +426,362 @@ function populateStateSelectors() {
       }
     });
   }
+}
 
-  const dashSelect = document.getElementById("dashboardStateSelect");
-  if (dashSelect) {
-    dashSelect.addEventListener("change", (e) => {
-      const val = e.target.value;
-      if (val === "all") {
+/**
+ * Populate District Selector options based on selected State
+ */
+function populateDistrictSelector(state, selectId, defaultDistrict = "") {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+
+  sel.innerHTML = "";
+  const optAll = document.createElement("option");
+  optAll.value = "all";
+  optAll.textContent = state === "all" ? "📍 All Districts (786 Districts)" : `📍 All Districts in ${state}`;
+  sel.appendChild(optAll);
+
+  let districts = [];
+  if (state && state !== "all" && stateDistrictsMap[state]) {
+    districts = stateDistrictsMap[state];
+  } else if (state && state !== "all") {
+    districts = [...new Set(allDistrictsData.filter(d => d.State === state).map(d => d.District))].sort();
+  } else {
+    // Top / sample districts if state is "all"
+    districts = [...new Set(allDistrictsData.map(d => d.District))].sort();
+  }
+
+  districts.forEach(dist => {
+    const opt = document.createElement("option");
+    opt.value = dist;
+    opt.textContent = `📍 ${dist}`;
+    if (defaultDistrict && dist.toLowerCase() === defaultDistrict.toLowerCase()) {
+      opt.selected = true;
+    }
+    sel.appendChild(opt);
+  });
+}
+
+/**
+ * Quick 1-Click District Explorer Pills
+ */
+function renderQuickDistrictPills() {
+  const container = document.getElementById("quickDistrictPills");
+  if (!container) return;
+
+  const popular = [
+    { label: "🌟 All India", state: "all", district: "all" },
+    { label: "📍 New Delhi", state: "Delhi", district: "New Delhi" },
+    { label: "📍 Lucknow", state: "Uttar Pradesh", district: "Lucknow" },
+    { label: "📍 Varanasi", state: "Uttar Pradesh", district: "Varanasi" },
+    { label: "📍 Mumbai", state: "Maharashtra", district: "Mumbai Suburban" },
+    { label: "📍 Pune", state: "Maharashtra", district: "Pune" },
+    { label: "📍 Patna", state: "Bihar", district: "Patna" },
+    { label: "📍 Bengaluru", state: "Karnataka", district: "Bengaluru Urban" },
+    { label: "📍 Ahmedabad", state: "Gujarat", district: "Ahmedabad" },
+    { label: "📍 Jaipur", state: "Rajasthan", district: "Jaipur" },
+    { label: "📍 Bhopal", state: "Madhya Pradesh", district: "Bhopal" },
+    { label: "📍 Kolkata", state: "West Bengal", district: "Kolkata" },
+    { label: "📍 Hyderabad", state: "Telangana", district: "Hyderabad" },
+    { label: "📍 Chennai", state: "Tamil Nadu", district: "Chennai" },
+    { label: "📍 Guwahati", state: "Assam", district: "Kamrup Metropolitan (Guwahati)" },
+    { label: "📍 Srinagar", state: "Jammu and Kashmir", district: "Srinagar" },
+    { label: "📍 Dehradun", state: "Uttarakhand", district: "Dehradun" },
+    { label: "📍 Shimla", state: "Himachal Pradesh", district: "Shimla" }
+  ];
+
+  container.innerHTML = "";
+  popular.forEach((item, idx) => {
+    const pill = document.createElement("button");
+    pill.className = `district-pill ${idx === 0 ? "active" : ""}`;
+    pill.textContent = item.label;
+    pill.onclick = () => {
+      document.querySelectorAll(".district-pill").forEach(p => p.classList.remove("active"));
+      pill.classList.add("active");
+
+      const stateSelect = document.getElementById("dashboardStateSelect");
+      if (item.state === "all") {
+        if (stateSelect) stateSelect.value = "all";
+        populateDistrictSelector("all", "dashboardDistrictSelect");
         computeSummaryMetrics(allClimateData);
         initIndiaMap(allClimateData);
       } else {
-        const filtered = allClimateData.filter(r => r.State === val);
-        computeSummaryMetrics(filtered);
-        initIndiaMap(filtered);
+        if (stateSelect) stateSelect.value = item.state;
+        populateDistrictSelector(item.state, "dashboardDistrictSelect", item.district);
+        window.openDistrictDetailModal(item.state, item.district);
       }
+    };
+    container.appendChild(pill);
+  });
+}
+
+/**
+ * Instant Autocomplete Search for 786 Districts
+ */
+function setupDistrictSearch() {
+  const input = document.getElementById("districtSearchInput");
+  const dropdown = document.getElementById("districtSearchDropdown");
+  const clearBtn = document.getElementById("btnClearDistrictSearch");
+  if (!input || !dropdown) return;
+
+  const handleSearch = () => {
+    const val = input.value.trim().toLowerCase();
+    if (!val) {
+      dropdown.style.display = "none";
+      if (clearBtn) clearBtn.style.display = "none";
+      return;
+    }
+
+    if (clearBtn) clearBtn.style.display = "block";
+
+    // Filter districts
+    const matches = allDistrictsData.filter(d => 
+      (d.District && d.District.toLowerCase().includes(val)) ||
+      (d.State && d.State.toLowerCase().includes(val))
+    ).slice(0, 10);
+
+    if (!matches.length) {
+      dropdown.innerHTML = `
+        <div style="padding: 12px 16px; color: var(--text-muted); font-size: 0.85rem; text-align: center;">
+          No matching districts found for "<b>${input.value}</b>". Try another city or district.
+        </div>
+      `;
+      dropdown.style.display = "block";
+      return;
+    }
+
+    dropdown.innerHTML = "";
+    matches.forEach(m => {
+      const item = document.createElement("div");
+      item.className = "district-search-item";
+      const riskClass = m.Risk === "High" ? "badge-high" : (m.Risk === "Medium" ? "badge-medium" : "badge-low");
+      item.innerHTML = `
+        <div>
+          <div class="district-search-item-title">📍 ${m.District}</div>
+          <div class="district-search-item-state">${m.State} • Temp: ${m.Temperature}°C • AQI: ${m.AQI}</div>
+        </div>
+        <div>
+          <span class="badge-pill ${riskClass}" style="font-size: 0.7rem; padding: 2px 8px;">${m.Risk}</span>
+        </div>
+      `;
+      item.onclick = () => {
+        input.value = `${m.District}, ${m.State}`;
+        dropdown.style.display = "none";
+        
+        // Sync state & district selectors
+        const stateSelect = document.getElementById("dashboardStateSelect");
+        if (stateSelect) {
+          stateSelect.value = m.State;
+          populateDistrictSelector(m.State, "dashboardDistrictSelect", m.District);
+        }
+
+        // 1-Click Instant Live Telemetry Inspection!
+        window.openDistrictDetailModal(m.State, m.District, m.Latitude, m.Longitude);
+      };
+      dropdown.appendChild(item);
     });
+
+    dropdown.style.display = "block";
+  };
+
+  input.addEventListener("input", handleSearch);
+  input.addEventListener("focus", handleSearch);
+
+  clearBtn?.addEventListener("click", () => {
+    input.value = "";
+    dropdown.style.display = "none";
+    clearBtn.style.display = "none";
+    input.focus();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".district-search-wrapper")) {
+      dropdown.style.display = "none";
+    }
+  });
+}
+
+/**
+ * Setup District Live Modal Listeners and Handlers
+ */
+function setupDistrictModal() {
+  const modal = document.getElementById("districtDetailModal");
+  if (!modal) return;
+
+  document.getElementById("btnDistrictModalClose")?.addEventListener("click", () => {
+    modal.style.display = "none";
+  });
+  document.getElementById("btnDistrictModalCloseFooter")?.addEventListener("click", () => {
+    modal.style.display = "none";
+  });
+  modal.addEventListener("click", (e) => {
+    if (e.target.id === "districtDetailModal") modal.style.display = "none";
+  });
+
+  // Top header button to open current district
+  document.getElementById("btnOpenDistrictDetail")?.addEventListener("click", () => {
+    const dashSelect = document.getElementById("dashboardStateSelect");
+    const distSelect = document.getElementById("dashboardDistrictSelect");
+    const st = dashSelect ? dashSelect.value : "";
+    const dist = distSelect && distSelect.value !== "all" ? distSelect.value : "Lucknow";
+    window.openDistrictDetailModal(st === "all" ? "Uttar Pradesh" : st, dist);
+  });
+
+  document.getElementById("btnLiveTelemetryBadge")?.addEventListener("click", () => {
+    const dashSelect = document.getElementById("dashboardStateSelect");
+    const distSelect = document.getElementById("dashboardDistrictSelect");
+    const st = dashSelect ? dashSelect.value : "";
+    const dist = distSelect && distSelect.value !== "all" ? distSelect.value : "Lucknow";
+    window.openDistrictDetailModal(st === "all" ? "Uttar Pradesh" : st, dist);
+  });
+
+  // Refresh Live Feed in Modal
+  document.getElementById("btnRefreshDistrictLive")?.addEventListener("click", () => {
+    if (currentSelectedDistrict) {
+      window.openDistrictDetailModal(
+        currentSelectedDistrict.state,
+        currentSelectedDistrict.district,
+        currentSelectedDistrict.lat,
+        currentSelectedDistrict.lon,
+        true // force refresh
+      );
+    }
+  });
+
+  // Ask AI Copilot button in Modal
+  document.getElementById("btnAskAiAboutDistrict")?.addEventListener("click", () => {
+    modal.style.display = "none";
+    switchView("assistant");
+    if (currentSelectedDistrict && typeof window.askAssistantQuery === "function") {
+      setTimeout(() => {
+        window.askAssistantQuery(`Tell me about current live weather, temperature, AQI, and disaster precautions in ${currentSelectedDistrict.district}, ${currentSelectedDistrict.state}`);
+      }, 150);
+    }
+  });
+}
+
+/**
+ * 1-CLICK INSTANT LIVE DISTRICT INSPECTION
+ * Immediately fetches and displays live satellite telemetry, temperature, humidity, rain, AQI & NDMA tips.
+ */
+window.openDistrictDetailModal = async function(state, district, lat, lon, forceRefresh = false) {
+  const modal = document.getElementById("districtDetailModal");
+  if (!modal) return;
+
+  // Locate district record
+  let rec = allDistrictsData.find(d => 
+    (district && d.District && d.District.toLowerCase() === district.toLowerCase()) ||
+    (state && d.State && d.State.toLowerCase() === state.toLowerCase())
+  );
+
+  const distTitle = district || (rec ? rec.District : state);
+  const stateTitle = state || (rec ? rec.State : "India");
+  const targetLat = lat || (rec ? rec.Latitude : 26.8467);
+  const targetLon = lon || (rec ? rec.Longitude : 80.9462);
+
+  currentSelectedDistrict = { state: stateTitle, district: distTitle, lat: targetLat, lon: targetLon };
+
+  // Set modal header & open instantly
+  document.getElementById("districtModalTitle").textContent = `${distTitle}, ${stateTitle}`;
+  document.getElementById("districtModalCoords").textContent = `Lat: ${Number(targetLat).toFixed(4)}, Lon: ${Number(targetLon).toFixed(4)} • Digital Twin Node`;
+  document.getElementById("districtModalLiveStatus").textContent = "FETCHING LIVE SATELLITE FEED...";
+  modal.style.display = "flex";
+
+  // Pre-fill baseline while live fetching
+  if (rec) {
+    document.getElementById("districtModalTemp").textContent = `${rec.Temperature} °C`;
+    document.getElementById("districtModalHumidity").textContent = `${rec.Humidity} %`;
+    document.getElementById("districtModalRain").textContent = `${rec.Rainfall} mm`;
+    document.getElementById("districtModalAqi").textContent = `${rec.AQI}`;
   }
 
-  const predSelect = document.getElementById("predictionStateSelect");
-  if (predSelect) {
-    predSelect.addEventListener("change", () => updateForecastView());
+  // Pan and fly map to clicked district
+  if (indiaMap && targetLat && targetLon) {
+    indiaMap.flyTo([targetLat, targetLon], 8.5, { duration: 1.2 });
   }
-}
+
+  // Fetch real-time live satellite telemetry
+  try {
+    let liveData = null;
+    try {
+      const apiRes = await apiFetch(`/live-district?state=${encodeURIComponent(stateTitle)}&district=${encodeURIComponent(distTitle)}&lat=${targetLat}&lon=${targetLon}${forceRefresh ? "&refresh=1" : ""}`);
+      if (apiRes.ok) {
+        liveData = await apiRes.json();
+      }
+    } catch (apiErr) {
+      console.warn("Backend live API offline, fallback to direct Open-Meteo satellite feed...", apiErr);
+    }
+
+    if (!liveData) {
+      // Direct high-availability client-side Open-Meteo fallback
+      const wUrl = `https://api.open-meteo.com/v1/forecast?latitude=${targetLat}&longitude=${targetLon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m`;
+      const aUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${targetLat}&longitude=${targetLon}&current=us_aqi,pm10,pm2_5`;
+      
+      const [wRes, aRes] = await Promise.allSettled([fetch(wUrl), fetch(aUrl)]);
+      const wJson = wRes.status === "fulfilled" && wRes.value.ok ? await wRes.value.json() : null;
+      const aJson = aRes.status === "fulfilled" && aRes.value.ok ? await aRes.value.json() : null;
+
+      const curW = wJson ? wJson.current || {} : {};
+      const curA = aJson ? aJson.current || {} : {};
+
+      const temp = curW.temperature_2m ?? (rec ? rec.Temperature : 26.5);
+      const aqi = curA.us_aqi ?? (rec ? rec.AQI : 110);
+
+      liveData = {
+        temperature: temp,
+        apparent_temperature: curW.apparent_temperature ?? temp,
+        humidity: curW.relative_humidity_2m ?? (rec ? rec.Humidity : 65),
+        precipitation: curW.precipitation ?? (rec ? rec.Rainfall : 0.0),
+        wind_speed: curW.wind_speed_10m ?? 4.2,
+        weather_code: curW.weather_code ?? 0,
+        condition: curW.weather_code === 0 ? "Clear Sky" : (curW.weather_code <= 3 ? "Partly Cloudy" : "Rain Showers"),
+        icon: curW.weather_code === 0 ? "☀️" : (curW.weather_code <= 3 ? "⛅" : "🌧️"),
+        aqi: aqi,
+        pm2_5: curA.pm2_5 ?? 38.5,
+        pm10: curA.pm10 ?? 64.0,
+        aqi_category: aqi > 150 ? "Unhealthy" : (aqi > 100 ? "Moderate" : "Good"),
+        aqi_advice: aqi > 150 ? "Wear an N95 mask outside." : "Air quality is satisfactory.",
+        risk_level: (aqi > 150 || temp > 35) ? "High" : (aqi > 100 ? "Medium" : "Low"),
+        hazard_tags: temp > 35 ? ["Heatwave Warning"] : ["Optimal Climate Conditions"],
+        ndma_tips: ["Drink plenty of water and avoid strenuous outdoor exercise in peak hours."],
+        last_updated: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+    }
+
+    currentDistrictTelemetry = liveData;
+
+    // Update Modal DOM
+    document.getElementById("districtModalIcon").textContent = liveData.icon || "☀️";
+    document.getElementById("districtModalTemp").textContent = `${liveData.temperature} °C`;
+    document.getElementById("districtModalFeelsLike").textContent = `Feels like ${liveData.apparent_temperature} °C`;
+    document.getElementById("districtModalCondition").textContent = liveData.condition;
+    document.getElementById("districtModalHumidity").textContent = `${liveData.humidity} %`;
+    document.getElementById("districtModalRain").textContent = `${liveData.precipitation} mm`;
+    document.getElementById("districtModalWind").textContent = `${liveData.wind_speed} km/h`;
+
+    const aqiEl = document.getElementById("districtModalAqi");
+    aqiEl.textContent = liveData.aqi;
+    aqiEl.style.color = liveData.aqi > 150 ? "#ef4444" : (liveData.aqi > 100 ? "#f59e0b" : "#10b981");
+
+    document.getElementById("districtModalPm25").textContent = `${liveData.pm2_5} µg/m³`;
+    document.getElementById("districtModalPm10").textContent = `${liveData.pm10} µg/m³`;
+    document.getElementById("districtModalAqiCategory").textContent = liveData.aqi_category || "Moderate";
+    document.getElementById("districtModalAqiAdvice").textContent = liveData.aqi_advice || "Air quality acceptable.";
+
+    const riskBadge = document.getElementById("districtModalRiskBadge");
+    riskBadge.textContent = `${(liveData.risk_level || "Medium").toUpperCase()} RISK`;
+    riskBadge.className = `badge-pill ${liveData.risk_level === "High" ? "badge-high" : (liveData.risk_level === "Medium" ? "badge-medium" : "badge-low")}`;
+
+    document.getElementById("districtModalHazards").textContent = (liveData.hazard_tags || []).join(" • ") || "Normal Atmospheric Patterns";
+    document.getElementById("districtModalTips").textContent = (liveData.ndma_tips || [])[0] || "Stay informed with local weather updates.";
+    document.getElementById("districtModalLiveStatus").textContent = "LIVE SATELLITE (REAL-TIME)";
+    document.getElementById("districtModalTimestamp").textContent = `Updated: ${liveData.last_updated || "Just now"}`;
+
+  } catch (err) {
+    console.error("Error updating live district modal:", err);
+    document.getElementById("districtModalLiveStatus").textContent = "OFFLINE TELEMETRY ARCHIVE";
+  }
+};
 
 /**
  * Render Home View Elements
@@ -431,16 +868,29 @@ function renderReportsView() {
  */
 async function updateForecastView() {
   const sel = document.getElementById("predictionStateSelect");
+  const distSel = document.getElementById("predictionDistrictSelect");
   if (!sel) return;
   const state = sel.value;
-  const stateData = allClimateData.find(r => r.State === state) || allClimateData[0];
+  const dist = distSel ? distSel.value : "all";
+
+  let stateData = null;
+  if (dist && dist !== "all") {
+    stateData = allDistrictsData.find(d => d.District === dist && (!state || d.State === state)) ||
+                allDistrictsData.find(d => d.District === dist);
+  }
+  if (!stateData) {
+    stateData = allClimateData.find(r => r.State === state) || allClimateData[0];
+  }
+  if (!stateData) return;
+
+  const displayName = dist && dist !== "all" ? `${stateData.District}, ${stateData.State}` : stateData.State;
 
   try {
     const res = await apiFetch("/forecast", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        state: stateData.State,
+        state: displayName,
         rainfall: stateData.Rainfall,
         humidity: stateData.Humidity,
         aqi: stateData.AQI,

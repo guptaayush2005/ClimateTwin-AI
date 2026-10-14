@@ -241,15 +241,47 @@
 
       <!-- VIEW 2: DASHBOARD -->
       <section id="view-dashboard" class="view-panel">
-        <div class="card-glass" style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
-          <div>
-            <h2 data-i18n="nav_dashboard">Climate Intelligence Dashboard</h2>
-            <p style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="app_subtitle">AI-powered real-time climate monitoring system for India</p>
+        <div class="card-glass" style="margin-bottom: 24px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 16px;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <h2 data-i18n="nav_dashboard" style="margin: 0;">Climate Intelligence Dashboard</h2>
+                <span class="badge-live" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: #34d399; font-size: 0.76rem; padding: 4px 10px; cursor: pointer;" id="btnLiveTelemetryBadge" title="Click to view live real-time district telemetry">
+                  <span class="pulse-emerald"></span> <span>⚡ LIVE SATELLITE (786 DISTRICTS)</span>
+                </span>
+              </div>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;" data-i18n="app_subtitle">786 Districts across 36 States & UTs with Real-Time Up-to-the-Minute Climate Telemetry</p>
+            </div>
+            <div class="district-select-group">
+              <div style="min-width: 180px;">
+                <select id="dashboardStateSelect" class="custom-select" title="Select Indian State or UT">
+                  <option value="all">🇮🇳 All States (National View)</option>
+                </select>
+              </div>
+              <div style="min-width: 180px;">
+                <select id="dashboardDistrictSelect" class="custom-select" title="Select Specific District">
+                  <option value="all">📍 All Districts</option>
+                </select>
+              </div>
+              <button id="btnOpenDistrictDetail" class="btn-primary" style="padding: 9px 16px; font-size: 0.82rem; display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+                <span>⚡ Live District Intel</span>
+              </button>
+            </div>
           </div>
-          <div style="min-width: 260px;">
-            <select id="dashboardStateSelect" class="custom-select">
-              <option value="all">All States (National View)</option>
-            </select>
+
+          <!-- Instant Live Search Bar for 786 Districts -->
+          <div class="district-search-wrapper">
+            <div class="district-search-input-box">
+              <span style="font-size: 1.1rem; opacity: 0.8; margin-right: 6px;">🔍</span>
+              <input id="districtSearchInput" type="text" placeholder="Search any District or City in India (e.g. Lucknow, Varanasi, Pune, Patna, Indore, Surat, Jaipur, Shimla...)" autocomplete="off" />
+              <button id="btnClearDistrictSearch" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: none; padding: 4px 8px; font-size: 1.1rem;">&times;</button>
+            </div>
+            <div id="districtSearchDropdown" class="district-search-dropdown"></div>
+          </div>
+
+          <!-- Quick 1-Click District Explorer Pills -->
+          <div class="district-pills-bar" id="quickDistrictPills">
+            <!-- Dynamically populated chips -->
           </div>
         </div>
 
@@ -320,13 +352,14 @@
 
       <!-- VIEW 3: AI PREDICTIONS -->
       <section id="view-predictions" class="view-panel">
-        <div class="card-glass" style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+        <div class="card-glass" style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
           <div>
             <h2 data-i18n="predictions_title">AI Climate Predictions</h2>
-            <p style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="predictions_subtitle">RandomForest 7-day temperature forecast model.</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="predictions_subtitle">RandomForest 7-day temperature forecast model for all 786 Indian districts.</p>
           </div>
-          <div style="min-width: 240px;">
-            <select id="predictionStateSelect" class="custom-select"></select>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <select id="predictionStateSelect" class="custom-select" style="min-width: 170px;"></select>
+            <select id="predictionDistrictSelect" class="custom-select" style="min-width: 170px;"></select>
           </div>
         </div>
 
@@ -687,6 +720,103 @@
           💬 Ask AI Copilot about this State
         </button>
         <button id="btnRiskModalCloseFooter" class="btn-primary" style="background: rgba(255,255,255,0.08); color: #fff; font-size: 0.85rem; padding: 9px 16px;">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DISTRICT LIVE TELEMETRY MODAL ==================== -->
+  <div id="districtDetailModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span style="font-size: 1.3rem;">📍</span>
+            <h3 id="districtModalTitle" style="font-size: 1.35rem; font-weight: 800; color: #fff; margin: 0;">Lucknow, Uttar Pradesh</h3>
+          </div>
+          <div id="districtModalCoords" style="font-size: 0.8rem; color: var(--text-muted);">Lat: 26.8467, Lon: 80.9462 • Digital Twin Grid Node</div>
+        </div>
+        <button id="btnDistrictModalClose" class="modal-close-btn" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Live Weather Hero Card -->
+        <div class="district-live-hero">
+          <div class="district-live-weather-big">
+            <div id="districtModalIcon" class="district-weather-icon-large">☀️</div>
+            <div>
+              <div id="districtModalTemp" class="district-live-temp-display">25.0 °C</div>
+              <div style="font-size: 0.88rem; color: var(--text-muted);">
+                <span id="districtModalFeelsLike">Feels like 26.5 °C</span> • <strong id="districtModalCondition" style="color: #38bdf8;">Clear Sky</strong>
+              </div>
+            </div>
+          </div>
+          <div>
+            <span class="badge-live" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: #34d399; font-size: 0.78rem; padding: 6px 14px;">
+              <span class="pulse-emerald"></span>
+              <span id="districtModalLiveStatus">REAL-TIME TELEMETRY</span>
+            </span>
+            <div id="districtModalTimestamp" style="font-size: 0.72rem; color: var(--text-muted); text-align: right; margin-top: 4px;">Updated: Just now</div>
+          </div>
+        </div>
+
+        <!-- Metric Cards Subgrid -->
+        <div class="district-metrics-subgrid">
+          <div class="district-metric-mini-card">
+            <div class="district-metric-mini-label">💧 Humidity</div>
+            <div id="districtModalHumidity" class="district-metric-mini-value">65 %</div>
+          </div>
+          <div class="district-metric-mini-card">
+            <div class="district-metric-mini-label">🌧️ Rain / Precip</div>
+            <div id="districtModalRain" class="district-metric-mini-value">0.0 mm</div>
+          </div>
+          <div class="district-metric-mini-card">
+            <div class="district-metric-mini-label">💨 Wind Speed</div>
+            <div id="districtModalWind" class="district-metric-mini-value">5.2 km/h</div>
+          </div>
+          <div class="district-metric-mini-card">
+            <div class="district-metric-mini-label">🌫️ Air Quality (AQI)</div>
+            <div id="districtModalAqi" class="district-metric-mini-value" style="color: #f59e0b;">110</div>
+          </div>
+        </div>
+
+        <!-- AQI Detailed Breakdown Panel -->
+        <div style="background: rgba(13, 23, 46, 0.65); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 0.85rem; font-weight: 700; color: #f8fafc;">Air Quality Severity & Particulates:</span>
+            <span id="districtModalAqiCategory" class="badge-pill badge-medium">Moderate</span>
+          </div>
+          <div style="display: flex; gap: 20px; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px;">
+            <div>PM2.5: <strong id="districtModalPm25" style="color: #fff;">-- µg/m³</strong></div>
+            <div>PM10: <strong id="districtModalPm10" style="color: #fff;">-- µg/m³</strong></div>
+          </div>
+          <p id="districtModalAqiAdvice" style="font-size: 0.82rem; color: #cbd5e1; margin: 0; line-height: 1.4;">Air quality is acceptable for outdoor activity.</p>
+        </div>
+
+        <!-- Hazard Classification & NDMA Precautions -->
+        <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <span style="font-size: 0.85rem; font-weight: 700; color: #fca5a5;">🚨 Climate Risk Diagnosis:</span>
+            <span id="districtModalRiskBadge" class="badge-pill badge-high">HIGH RISK</span>
+          </div>
+          <div id="districtModalHazards" style="font-size: 0.85rem; color: #fecaca; margin-bottom: 8px; font-weight: 600;">Heatwave Warning • Poor Air Dispersion</div>
+          <div style="font-size: 0.82rem; color: #e2e8f0; line-height: 1.5; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;">
+            <strong style="color: #f59e0b;">🛡️ NDMA Advisory:</strong> <span id="districtModalTips">Stay hydrated, avoid direct sun exposure between 12 PM - 3 PM, and wear light cotton clothing.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-glass); padding-top: 14px;">
+        <div style="display: flex; gap: 8px;">
+          <button id="btnRefreshDistrictLive" class="btn-primary" style="background: rgba(16, 185, 129, 0.2); border-color: rgba(16, 185, 129, 0.5); color: #34d399; font-size: 0.82rem; padding: 8px 14px;">
+            🔄 Refresh Live Feed
+          </button>
+          <button id="btnAskAiAboutDistrict" class="btn-primary" style="font-size: 0.82rem; padding: 8px 14px;">
+            💬 Ask AI Copilot
+          </button>
+        </div>
+        <button id="btnDistrictModalCloseFooter" class="btn-primary" style="background: rgba(255,255,255,0.08); color: #fff; font-size: 0.82rem; padding: 8px 14px;">
           Close
         </button>
       </div>

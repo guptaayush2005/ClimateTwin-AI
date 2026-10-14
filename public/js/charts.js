@@ -79,18 +79,25 @@ function initIndiaMap(records) {
       fillOpacity: 0.75
     });
 
+    const title = row.District ? `${row.District}, ${row.State}` : row.State;
+    const isDistrict = Boolean(row.District);
+
     let diagTag = "";
-    if (typeof getRiskDiagnosis === "function") {
+    if (isDistrict) {
+      diagTag = `<div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #cbd5e1; font-size: 11px;">
+        <button onclick="window.openDistrictDetailModal('${row.State.replace(/'/g, "\\'")}', '${row.District.replace(/'/g, "\\'")}', ${row.Latitude}, ${row.Longitude})" style="background: #2563eb; color: #fff; border: none; border-radius: 4px; padding: 4px 8px; font-weight: 700; cursor: pointer; width: 100%; display: block; margin-top: 4px;">⚡ 1-Click Live Telemetry</button>
+      </div>`;
+    } else if (typeof getRiskDiagnosis === "function") {
       const diag = getRiskDiagnosis(row);
       diagTag = `<div style="margin-top: 6px; padding-top: 4px; border-top: 1px solid #cbd5e1; font-size: 11px;">
         <b>Hazard Trigger:</b> <span style="color: ${markerColor}; font-weight: 700;">${diag.shortLabel}</span><br/>
-        <a href="javascript:void(0)" onclick="window.openRiskDetailModal('${row.State}')" style="display: inline-block; margin-top: 4px; color: #2563eb; font-weight: 700; text-decoration: underline;">🔍 Click for Hazard Reason & NDMA Tips</a>
+        <a href="javascript:void(0)" onclick="window.openRiskDetailModal('${row.State.replace(/'/g, "\\'")}')" style="display: inline-block; margin-top: 4px; color: #2563eb; font-weight: 700; text-decoration: underline;">🔍 Hazard Diagnosis & NDMA Tips</a>
       </div>`;
     }
 
     const popupHtml = `
       <div style="font-family: inherit; font-size: 13px; line-height: 1.4; color: #0f172a;">
-        <strong style="font-size: 14px; color: #1e3a8a;">📍 ${row.State}</strong><br/>
+        <strong style="font-size: 14px; color: #1e3a8a;">📍 ${title}</strong><br/>
         🌡️ <b>Temp:</b> ${row.Temperature} °C<br/>
         🌧️ <b>Rain:</b> ${row.Rainfall} mm<br/>
         💧 <b>Humidity:</b> ${row.Humidity} %<br/>
@@ -100,6 +107,11 @@ function initIndiaMap(records) {
     `;
 
     circle.bindPopup(popupHtml);
+    circle.on("click", () => {
+      if (isDistrict && typeof window.openDistrictDetailModal === "function") {
+        window.openDistrictDetailModal(row.State, row.District, row.Latitude, row.Longitude);
+      }
+    });
     markersLayer.addLayer(circle);
   });
 }

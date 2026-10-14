@@ -32,13 +32,43 @@ def render_dashboard_view():
     states_list = get_states_list()
 
     all_states_label = t("all_states")
-    selected_state = st.selectbox(
-        t("select_state"),
-        [all_states_label] + states_list
-    )
+    col_st, col_dt = st.columns([1, 1])
+    with col_st:
+        selected_state = st.selectbox(
+            t("select_state"),
+            [all_states_label] + states_list
+        )
 
-    if selected_state != all_states_label:
-        df = df_full[df_full["State"] == selected_state]
+    with col_dt:
+        from backend.services.data_service import get_districts_for_state, load_districts_data
+        from backend.services.live_weather_service import fetch_live_district_telemetry
+        dist_options = ["All Districts"]
+        if selected_state != all_states_label:
+            dist_options += get_districts_for_state(selected_state)
+        selected_district = st.selectbox("📍 Select District (ज़िला)", dist_options)
+
+    if selected_district and selected_district != "All Districts":
+        dist_df = load_districts_data(state=selected_state, district=selected_district)
+        if not dist_df.empty:
+            df = dist_df
+            d_row = dist_df.iloc[0]
+            live = fetch_live_district_telemetry(
+                float(d_row["Latitude"]),
+                float(d_row["Longitude"]),
+                state=selected_state,
+                district=selected_district
+            )
+            st.success(
+                f"⚡ **Live Satellite Telemetry ({selected_district}, {selected_state}):** "
+                f"{live['icon']} {live['condition']} | 🌡️ {live['temperature']} °C (Feels {live['apparent_temperature']} °C) | "
+                f"💧 {live['humidity']}% | 🌧️ {live['precipitation']} mm | 💨 {live['wind_speed']} km/h | "
+                f"🌫️ AQI {live['aqi']} ({live['aqi_category']}) | 🚨 {live['risk_level']} Risk"
+            )
+        else:
+            df = df_full[df_full["State"] == selected_state] if selected_state != all_states_label else df_full
+    elif selected_state != all_states_label:
+        state_dists = load_districts_data(state=selected_state)
+        df = state_dists if not state_dists.empty else df_full[df_full["State"] == selected_state]
     else:
         df = df_full
 

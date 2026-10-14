@@ -4,7 +4,121 @@ Handles data loading, sanitization, filtering, summary metric calculations, and 
 """
 import pandas as pd
 from typing import Optional, Dict, Any, List
-from backend.config import CLIMATE_DATA_FILE, STATE_COORDINATES_FILE
+import json
+from backend.config import (
+    CLIMATE_DATA_FILE,
+    STATE_COORDINATES_FILE,
+    DISTRICTS_DATA_FILE,
+    DISTRICTS_JSON_FILE,
+    STATE_DISTRICTS_MAP_FILE
+)
+
+
+def load_districts_data(state: Optional[str] = None, district: Optional[str] = None) -> pd.DataFrame:
+    """
+    Loads all India district data from CSV or JSON with optional state/district filtering.
+    """
+    try:
+        if DISTRICTS_DATA_FILE.exists():
+            df = pd.read_csv(DISTRICTS_DATA_FILE)
+        elif DISTRICTS_JSON_FILE.exists():
+            df = pd.read_json(DISTRICTS_JSON_FILE)
+        else:
+            return pd.DataFrame()
+    except Exception as e:
+        print(f"Error loading districts data: {e}")
+        return pd.DataFrame()
+
+    numeric_cols = ["Temperature", "Rainfall", "Humidity", "AQI", "Latitude", "Longitude"]
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    if "Risk" not in df.columns:
+        df["Risk"] = "Medium"
+
+    if state and state not in ["All States", "सभी राज्य", "all"]:
+        df = df[df["State"] == state]
+
+    if district and district not in ["All Districts", "सभी ज़िले", "all"]:
+        df = df[df["District"] == district]
+
+    return df
+
+
+def get_state_districts_map() -> Dict[str, List[str]]:
+    """
+    Returns state -> list of district names mapping for frontend dropdowns.
+    """
+    if STATE_DISTRICTS_MAP_FILE.exists():
+        try:
+            with open(STATE_DISTRICTS_MAP_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+
+    df = load_districts_data()
+    if not df.empty:
+        mapping = {}
+        for state, group in df.groupby("State"):
+            mapping[state] = sorted(group["District"].dropna().unique().tolist())
+        return mapping
+    return {}
+
+
+def get_districts_for_state(state: str) -> List[str]:
+    """
+    Returns list of districts belonging to a specific state.
+    """
+    st_map = get_state_districts_map()
+    return st_map.get(state, [])
+
+
+def get_district_record(state: str, district: str) -> Optional[Dict[str, Any]]:
+    """
+    Returns baseline or cached climate metrics for a specific district.
+    """
+    df = load_districts_data(state=state, district=district)
+    if not df.empty:
+        return df.iloc[0].to_dict()
+    # Try searching district name directly
+    df_all = load_districts_data()
+    match = df_all[df_all["District"].str.lower() == district.lower()]
+    if not match.empty:
+        return match.iloc[0].to_dict()
+    return None
+
+
+def search_locations(query: str) -> List[Dict[str, Any]]:
+    """
+    Searches across all Indian states and districts matching query.
+    Returns up to 15 best matches with coordinates and metadata.
+    """
+    if not query:
+        return []
+    q = query.lower().strip()
+    df = load_districts_data()
+    if df.empty:
+        return []
+
+    # Search matches in District and State
+    matches = df[df["District"].str.lower().str.contains(q, na=False) | df["State"].str.lower().str.contains(q, na=False)]
+    results = []
+    for _, row in matches.head(15).iterrows():
+        results.append({
+            "type": "district",
+            "name": f"{row['District']}, {row['State']}",
+            "district": row["District"],
+            "state": row["State"],
+            "lat": float(row["Latitude"]),
+            "lon": float(row["Longitude"]),
+            "temp": float(row["Temperature"]),
+            "rain": float(row["Rainfall"]),
+            "humidity": float(row["Humidity"]),
+            "aqi": int(row["AQI"]),
+            "risk": row["Risk"]
+        })
+    return results
 
 
 def load_climate_data(state: Optional[str] = None) -> pd.DataFrame:
