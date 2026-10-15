@@ -4,8 +4,8 @@
 
 // Global State
 let allClimateData = [];
-let allDistrictsData = [];
-let stateDistrictsMap = {};
+let allDistrictsData = (typeof window !== "undefined" && Array.isArray(window.STATIC_DISTRICTS_DATA)) ? window.STATIC_DISTRICTS_DATA : [];
+let stateDistrictsMap = (typeof window !== "undefined" && window.STATIC_STATE_DISTRICTS_MAP) ? window.STATIC_STATE_DISTRICTS_MAP : {};
 let currentSelectedDistrict = null;
 let currentDistrictTelemetry = null;
 let summaryMetrics = {};
@@ -217,12 +217,24 @@ async function loadData() {
     allClimateData = FALLBACK_DATA;
   }
 
-  // Load All 786 Districts Data
+  // Ensure baseline districts dataset from window static bundle
+  if (!allDistrictsData || !allDistrictsData.length) {
+    if (typeof window !== "undefined" && Array.isArray(window.STATIC_DISTRICTS_DATA) && window.STATIC_DISTRICTS_DATA.length) {
+      allDistrictsData = window.STATIC_DISTRICTS_DATA;
+    }
+  }
+  if (!stateDistrictsMap || !Object.keys(stateDistrictsMap).length) {
+    if (typeof window !== "undefined" && window.STATIC_STATE_DISTRICTS_MAP) {
+      stateDistrictsMap = window.STATIC_STATE_DISTRICTS_MAP;
+    }
+  }
+
+  // Load All 786 Districts Data from backend API if online
   try {
     const dRes = await apiFetch("/districts");
     if (dRes.ok) {
       const dJson = await dRes.json();
-      allDistrictsData = dJson.data || [];
+      if (dJson.data && dJson.data.length) allDistrictsData = dJson.data;
     } else {
       const staticDistRes = await fetch("./data/india_districts.json");
       if (staticDistRes.ok) allDistrictsData = await staticDistRes.json();
@@ -231,9 +243,12 @@ async function loadData() {
     try {
       const staticDistRes = await fetch("./data/india_districts.json");
       if (staticDistRes.ok) allDistrictsData = await staticDistRes.json();
-    } catch (e2) {
-      console.warn("Could not load districts dataset:", e2);
-    }
+    } catch (e2) {}
+  }
+
+  // Final check to guarantee allDistrictsData is never empty
+  if ((!allDistrictsData || !allDistrictsData.length) && typeof window !== "undefined" && window.STATIC_DISTRICTS_DATA) {
+    allDistrictsData = window.STATIC_DISTRICTS_DATA;
   }
 
   // Load State-Districts Hierarchy Map
@@ -241,7 +256,7 @@ async function loadData() {
     const mapRes = await apiFetch("/state-districts-map");
     if (mapRes.ok) {
       const mapJson = await mapRes.json();
-      stateDistrictsMap = mapJson.map || {};
+      if (mapJson.map && Object.keys(mapJson.map).length) stateDistrictsMap = mapJson.map;
     } else {
       const staticMapRes = await fetch("./data/state_districts_map.json");
       if (staticMapRes.ok) stateDistrictsMap = await staticMapRes.json();
@@ -250,9 +265,11 @@ async function loadData() {
     try {
       const staticMapRes = await fetch("./data/state_districts_map.json");
       if (staticMapRes.ok) stateDistrictsMap = await staticMapRes.json();
-    } catch (e2) {
-      console.warn("Could not load state districts map:", e2);
-    }
+    } catch (e2) {}
+  }
+
+  if ((!stateDistrictsMap || !Object.keys(stateDistrictsMap).length) && typeof window !== "undefined" && window.STATIC_STATE_DISTRICTS_MAP) {
+    stateDistrictsMap = window.STATIC_STATE_DISTRICTS_MAP;
   }
 
   computeSummaryMetrics();
@@ -397,9 +414,32 @@ function populateStateSelectors() {
   if (dashDistSelect) {
     dashDistSelect.addEventListener("change", (e) => {
       const dist = e.target.value;
-      if (!dist || dist === "all") return;
       const st = dashSelect ? dashSelect.value : "";
-      window.openDistrictDetailModal(st, dist);
+      if (!dist || dist === "all") {
+        if (st === "all" || !st) {
+          computeSummaryMetrics(allClimateData);
+          initIndiaMap(allClimateData);
+        } else {
+          const stateDists = allDistrictsData.filter(d => d.State === st);
+          const mapData = stateDists.length ? stateDists : allClimateData.filter(r => r.State === st);
+          computeSummaryMetrics(mapData);
+          initIndiaMap(mapData);
+        }
+        return;
+      }
+
+      // Specific District Selected:
+      const distRec = allDistrictsData.find(d => 
+        d.District.toLowerCase() === dist.toLowerCase() &&
+        (!st || st === "all" || d.State.toLowerCase() === st.toLowerCase())
+      );
+      if (distRec) {
+        computeSummaryMetrics([distRec]);
+        if (indiaMap && distRec.Latitude && distRec.Longitude) {
+          indiaMap.flyTo([distRec.Latitude, distRec.Longitude], 8.5, { duration: 1.2 });
+        }
+      }
+      window.openDistrictDetailModal(st, dist, distRec?.Latitude, distRec?.Longitude);
     });
   }
 
@@ -520,12 +560,17 @@ function renderQuickDistrictPills() {
  * Fast Euclidean distance computation for nearest district lookup
  */
 function getNearestDistrictStatic(lat, lon) {
-  if (!allDistrictsData || !allDistrictsData.length) return null;
+  const distList = (allDistrictsData && allDistrictsData.length)
+    ? allDistrictsData
+    : (typeof window !== "undefined" && Array.isArray(window.STATIC_DISTRICTS_DATA) ? window.STATIC_DISTRICTS_DATA : []);
+  if (!distList || !distList.length) return null;
   lat = Number(lat);
   lon = Number(lon);
+  if (isNaN(lat) || isNaN(lon)) return null;
+
   let best = null;
   let minDistSq = Infinity;
-  for (const d of allDistrictsData) {
+  for (const d of distList) {
     const dLat = Number(d.Latitude);
     const dLon = Number(d.Longitude);
     if (!isNaN(dLat) && !isNaN(dLon)) {
@@ -684,12 +729,17 @@ function setupDistrictSearch() {
 window.lookupCoordinatesTelemetry = async function(lat, lon) {
   lat = Number(lat);
   lon = Number(lon);
-  if (isNaN(lat) || isNaN(lon) || lat < 6.0 || lat > 38.0 || lon < 68.0 || lon > 98.0) {
-    showToast("⚠️ Coordinates must be within India bounds (Lat: 6°-38° N, Lon: 68°-98° E).");
+  if (isNaN(lat) || isNaN(lon)) {
+    showToast("⚠️ Invalid coordinate numbers provided.");
     return;
   }
 
-  showToast(`🛰️ Reverse-geocoding (${lat.toFixed(4)}° N, ${lon.toFixed(4)}° E)...`);
+  const isOutsideIndia = (lat < 6.0 || lat > 38.0 || lon < 68.0 || lon > 98.0);
+  if (isOutsideIndia) {
+    showToast(`🌐 Coordinates (${lat.toFixed(2)}°, ${lon.toFixed(2)}°) are outside standard India bounds. Mapping to closest Indian climate node...`);
+  } else {
+    showToast(`🛰️ Reverse-geocoding (${lat.toFixed(4)}° N, ${lon.toFixed(4)}° E)...`);
+  }
 
   let nearest = null;
   try {
@@ -705,12 +755,17 @@ window.lookupCoordinatesTelemetry = async function(lat, lon) {
     nearest = getNearestDistrictStatic(lat, lon);
   }
 
+  if (!nearest && allDistrictsData && allDistrictsData.length) {
+    nearest = allDistrictsData.find(d => d.District === "New Delhi") || allDistrictsData[0];
+  }
+
   if (!nearest) {
     showToast("⚠️ Unable to find nearest Indian climate district node.");
     return;
   }
 
-  showToast(`📍 Nearest Station: ${nearest.District}, ${nearest.State} (${nearest.distance_km || 0} km away)`);
+  const distKm = nearest.distance_km !== undefined ? nearest.distance_km : 0;
+  showToast(`📍 Nearest Station: ${nearest.District}, ${nearest.State} (${distKm} km away)`);
 
   // Sync Selectors
   const stSelect = document.getElementById("dashboardStateSelect");
@@ -719,8 +774,14 @@ window.lookupCoordinatesTelemetry = async function(lat, lon) {
     populateDistrictSelector(nearest.State, "dashboardDistrictSelect", nearest.District);
   }
 
+  // Update Dashboard summary and fly map to this district
+  computeSummaryMetrics([nearest]);
+  if (indiaMap && nearest.Latitude && nearest.Longitude) {
+    indiaMap.flyTo([nearest.Latitude, nearest.Longitude], 8.5, { duration: 1.2 });
+  }
+
   // Open Live Telemetry Modal
-  window.openDistrictDetailModal(nearest.State, nearest.District, lat, lon);
+  window.openDistrictDetailModal(nearest.State, nearest.District, nearest.Latitude || lat, nearest.Longitude || lon);
 };
 
 /**
@@ -772,22 +833,26 @@ function setupDistrictModal() {
     if (e.target.id === "districtDetailModal") modal.style.display = "none";
   });
 
-  // Top header button to open current district
-  document.getElementById("btnOpenDistrictDetail")?.addEventListener("click", () => {
+  // Top header button to open current district (⚡ LiveCheck)
+  const handleLiveCheckClick = () => {
     const dashSelect = document.getElementById("dashboardStateSelect");
     const distSelect = document.getElementById("dashboardDistrictSelect");
-    const st = dashSelect ? dashSelect.value : "";
-    const dist = distSelect && distSelect.value !== "all" ? distSelect.value : "Lucknow";
-    window.openDistrictDetailModal(st === "all" ? "Uttar Pradesh" : st, dist);
-  });
+    const st = dashSelect ? dashSelect.value : "all";
+    let dist = distSelect && distSelect.value !== "all" ? distSelect.value : "";
+    if (!dist) {
+      if (st && st !== "all" && stateDistrictsMap[st] && stateDistrictsMap[st].length) {
+        dist = stateDistrictsMap[st][0];
+      } else {
+        const stateDists = allDistrictsData.filter(d => (!st || st === "all") ? true : d.State === st);
+        dist = stateDists.length ? stateDists[0].District : "New Delhi";
+      }
+    }
+    const targetState = (st && st !== "all") ? st : (allDistrictsData.find(d => d.District === dist)?.State || "Delhi");
+    window.openDistrictDetailModal(targetState, dist);
+  };
 
-  document.getElementById("btnLiveTelemetryBadge")?.addEventListener("click", () => {
-    const dashSelect = document.getElementById("dashboardStateSelect");
-    const distSelect = document.getElementById("dashboardDistrictSelect");
-    const st = dashSelect ? dashSelect.value : "";
-    const dist = distSelect && distSelect.value !== "all" ? distSelect.value : "Lucknow";
-    window.openDistrictDetailModal(st === "all" ? "Uttar Pradesh" : st, dist);
-  });
+  document.getElementById("btnOpenDistrictDetail")?.addEventListener("click", handleLiveCheckClick);
+  document.getElementById("btnLiveTelemetryBadge")?.addEventListener("click", handleLiveCheckClick);
 
   // GPS Geolocation Button (Current Location)
   document.getElementById("btnGeoLocation")?.addEventListener("click", () => {
@@ -904,15 +969,31 @@ window.openDistrictDetailModal = async function(state, district, lat, lon, force
   const modal = document.getElementById("districtDetailModal");
   if (!modal) return;
 
-  // Locate district record
-  let rec = allDistrictsData.find(d => 
-    (district && d.District && d.District.toLowerCase() === district.toLowerCase()) ||
-    (state && d.State && d.State.toLowerCase() === state.toLowerCase())
-  );
+  // Locate district record with strict precedence
+  let rec = null;
+  if (district && state) {
+    rec = allDistrictsData.find(d => 
+      d.District && d.District.toLowerCase() === district.toLowerCase() &&
+      d.State && d.State.toLowerCase() === state.toLowerCase()
+    );
+  }
+  if (!rec && district) {
+    rec = allDistrictsData.find(d => 
+      d.District && d.District.toLowerCase() === district.toLowerCase()
+    );
+  }
+  if (!rec && state && state !== "all") {
+    rec = allDistrictsData.find(d => 
+      d.State && d.State.toLowerCase() === state.toLowerCase()
+    );
+  }
 
   // If record not found but lat/lon given, find nearest static district
   if (!rec && lat && lon) {
     rec = getNearestDistrictStatic(lat, lon);
+  }
+  if (!rec && allDistrictsData && allDistrictsData.length) {
+    rec = allDistrictsData[0];
   }
 
   const distTitle = district || (rec ? rec.District : state);
