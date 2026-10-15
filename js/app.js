@@ -43,6 +43,198 @@ const FALLBACK_DATA = [
   { State: "West Bengal", Temperature: 30.82, Rainfall: 15.34, Humidity: 78.90, Latitude: 22.9868, Longitude: 87.8550, AQI: 158, Risk: "High" }
 ];
 
+// Comprehensive Dictionary of 150+ Major Indian Cities, Non-District Towns, Pilgrimage & Industrial Hubs
+const CITY_ALIASES = [
+  // Delhi NCR & Uttar Pradesh
+  { name: "Noida", district: "Gautam Buddha Nagar", state: "Uttar Pradesh", lat: 28.5355, lon: 77.3910 },
+  { name: "Greater Noida", district: "Gautam Buddha Nagar", state: "Uttar Pradesh", lat: 28.4744, lon: 77.5040 },
+  { name: "Ghaziabad", district: "Ghaziabad", state: "Uttar Pradesh", lat: 28.6692, lon: 77.4538 },
+  { name: "Modinagar", district: "Ghaziabad", state: "Uttar Pradesh", lat: 28.8317, lon: 77.5818 },
+  { name: "Hapur", district: "Hapur", state: "Uttar Pradesh", lat: 28.7306, lon: 77.7807 },
+  { name: "Ayodhya", district: "Ayodhya", state: "Uttar Pradesh", lat: 26.7922, lon: 82.1998 },
+  { name: "Faizabad", district: "Ayodhya", state: "Uttar Pradesh", lat: 26.7735, lon: 82.1460 },
+  { name: "Varanasi", district: "Varanasi", state: "Uttar Pradesh", lat: 25.3176, lon: 82.9739 },
+  { name: "Kashi", district: "Varanasi", state: "Uttar Pradesh", lat: 25.3176, lon: 82.9739 },
+  { name: "Banaras", district: "Varanasi", state: "Uttar Pradesh", lat: 25.3176, lon: 82.9739 },
+  { name: "Prayagraj", district: "Prayagraj", state: "Uttar Pradesh", lat: 25.4358, lon: 81.8463 },
+  { name: "Allahabad", district: "Prayagraj", state: "Uttar Pradesh", lat: 25.4358, lon: 81.8463 },
+  { name: "Mathura", district: "Mathura", state: "Uttar Pradesh", lat: 27.4924, lon: 77.6737 },
+  { name: "Vrindavan", district: "Mathura", state: "Uttar Pradesh", lat: 27.5807, lon: 77.7006 },
+  { name: "Goverdhan", district: "Mathura", state: "Uttar Pradesh", lat: 27.5000, lon: 77.4700 },
+  { name: "Meerut", district: "Meerut", state: "Uttar Pradesh", lat: 28.9845, lon: 77.7064 },
+  { name: "Bareilly", district: "Bareilly", state: "Uttar Pradesh", lat: 28.3670, lon: 79.4304 },
+  { name: "Aligarh", district: "Aligarh", state: "Uttar Pradesh", lat: 27.8974, lon: 78.0880 },
+  { name: "Moradabad", district: "Moradabad", state: "Uttar Pradesh", lat: 28.8386, lon: 78.7733 },
+  { name: "Saharanpur", district: "Saharanpur", state: "Uttar Pradesh", lat: 29.9679, lon: 77.5510 },
+  { name: "Gorakhpur", district: "Gorakhpur", state: "Uttar Pradesh", lat: 26.7606, lon: 83.3732 },
+  { name: "Jhansi", district: "Jhansi", state: "Uttar Pradesh", lat: 25.4484, lon: 78.5685 },
+  { name: "Muzaffarnagar", district: "Muzaffarnagar", state: "Uttar Pradesh", lat: 29.4727, lon: 77.7085 },
+  { name: "Firozabad", district: "Firozabad", state: "Uttar Pradesh", lat: 27.1591, lon: 78.3957 },
+
+  // Haryana & Punjab
+  { name: "Gurugram", district: "Gurugram", state: "Haryana", lat: 28.4595, lon: 77.0266 },
+  { name: "Gurgaon", district: "Gurugram", state: "Haryana", lat: 28.4595, lon: 77.0266 },
+  { name: "Manesar", district: "Gurugram", state: "Haryana", lat: 28.3544, lon: 76.9360 },
+  { name: "Faridabad", district: "Faridabad", state: "Haryana", lat: 28.4089, lon: 77.3178 },
+  { name: "Panipat", district: "Panipat", state: "Haryana", lat: 29.3909, lon: 76.9635 },
+  { name: "Karnal", district: "Karnal", state: "Haryana", lat: 29.6857, lon: 76.9905 },
+  { name: "Rohtak", district: "Rohtak", state: "Haryana", lat: 28.8955, lon: 76.6066 },
+  { name: "Sonipat", district: "Sonipat", state: "Haryana", lat: 28.9931, lon: 77.0151 },
+  { name: "Panchkula", district: "Panchkula", state: "Haryana", lat: 30.6942, lon: 76.8606 },
+  { name: "Ambala", district: "Ambala", state: "Haryana", lat: 30.3782, lon: 76.7767 },
+  { name: "Ludhiana", district: "Ludhiana", state: "Punjab", lat: 30.9010, lon: 75.8573 },
+  { name: "Amritsar", district: "Amritsar", state: "Punjab", lat: 31.6340, lon: 74.8723 },
+  { name: "Jalandhar", district: "Jalandhar", state: "Punjab", lat: 31.3260, lon: 75.5762 },
+  { name: "Patiala", district: "Patiala", state: "Punjab", lat: 30.3398, lon: 76.3869 },
+  { name: "Bathinda", district: "Bathinda", state: "Punjab", lat: 30.2110, lon: 74.9455 },
+  { name: "Mohali", district: "Sahibzada Ajit Singh Nagar (Mohali)", state: "Punjab", lat: 30.7046, lon: 76.7179 },
+  { name: "SAS Nagar", district: "Sahibzada Ajit Singh Nagar (Mohali)", state: "Punjab", lat: 30.7046, lon: 76.7179 },
+
+  // Uttarakhand & Himachal Pradesh
+  { name: "Rishikesh", district: "Dehradun", state: "Uttarakhand", lat: 30.0869, lon: 78.2676 },
+  { name: "Haridwar", district: "Haridwar", state: "Uttarakhand", lat: 29.9457, lon: 78.1642 },
+  { name: "Roorkee", district: "Haridwar", state: "Uttarakhand", lat: 29.8543, lon: 77.8880 },
+  { name: "Mussoorie", district: "Dehradun", state: "Uttarakhand", lat: 30.4598, lon: 78.0644 },
+  { name: "Nainital", district: "Nainital", state: "Uttarakhand", lat: 29.3803, lon: 79.4636 },
+  { name: "Haldwani", district: "Nainital", state: "Uttarakhand", lat: 29.2183, lon: 79.5130 },
+  { name: "Kedarnath", district: "Rudraprayag", state: "Uttarakhand", lat: 30.7346, lon: 79.0669 },
+  { name: "Badrinath", district: "Chamoli", state: "Uttarakhand", lat: 30.7433, lon: 79.4938 },
+  { name: "Auli", district: "Chamoli", state: "Uttarakhand", lat: 30.5284, lon: 79.5694 },
+  { name: "Joshimath", district: "Chamoli", state: "Uttarakhand", lat: 30.5574, lon: 79.5658 },
+  { name: "Dharamshala", district: "Kangra", state: "Himachal Pradesh", lat: 32.2190, lon: 76.3234 },
+  { name: "McLeodganj", district: "Kangra", state: "Himachal Pradesh", lat: 32.2426, lon: 76.3213 },
+  { name: "Manali", district: "Kullu", state: "Himachal Pradesh", lat: 32.2396, lon: 77.1887 },
+  { name: "Kullu", district: "Kullu", state: "Himachal Pradesh", lat: 31.9579, lon: 77.1095 },
+  { name: "Kasol", district: "Kullu", state: "Himachal Pradesh", lat: 32.0100, lon: 77.3150 },
+  { name: "Shimla", district: "Shimla", state: "Himachal Pradesh", lat: 31.1048, lon: 77.1734 },
+  { name: "Kufri", district: "Shimla", state: "Himachal Pradesh", lat: 31.0979, lon: 77.2678 },
+  { name: "Spiti", district: "Lahaul and Spiti", state: "Himachal Pradesh", lat: 32.2276, lon: 78.0710 },
+  { name: "Kaza", district: "Lahaul and Spiti", state: "Himachal Pradesh", lat: 32.2276, lon: 78.0710 },
+  { name: "Dalhousie", district: "Chamba", state: "Himachal Pradesh", lat: 32.5387, lon: 75.9710 },
+
+  // Jammu & Kashmir & Ladakh
+  { name: "Srinagar", district: "Srinagar", state: "Jammu and Kashmir", lat: 34.0837, lon: 74.7973 },
+  { name: "Gulmarg", district: "Baramulla", state: "Jammu and Kashmir", lat: 34.0484, lon: 74.3805 },
+  { name: "Pahalgam", district: "Anantnag", state: "Jammu and Kashmir", lat: 34.0163, lon: 75.1913 },
+  { name: "Sonamarg", district: "Ganderbal", state: "Jammu and Kashmir", lat: 34.3032, lon: 75.2934 },
+  { name: "Jammu", district: "Jammu", state: "Jammu and Kashmir", lat: 32.7266, lon: 74.8570 },
+  { name: "Katra", district: "Reasi", state: "Jammu and Kashmir", lat: 32.9916, lon: 74.9318 },
+  { name: "Vaishno Devi", district: "Reasi", state: "Jammu and Kashmir", lat: 33.0308, lon: 74.9490 },
+  { name: "Leh", district: "Leh", state: "Ladakh", lat: 34.1526, lon: 77.5771 },
+  { name: "Ladakh", district: "Leh", state: "Ladakh", lat: 34.1526, lon: 77.5771 },
+  { name: "Kargil", district: "Kargil", state: "Ladakh", lat: 34.5539, lon: 76.1349 },
+  { name: "Nubra", district: "Leh", state: "Ladakh", lat: 34.6863, lon: 77.5673 },
+
+  // Maharashtra
+  { name: "Navi Mumbai", district: "Thane", state: "Maharashtra", lat: 19.0330, lon: 73.0297 },
+  { name: "Thane", district: "Thane", state: "Maharashtra", lat: 19.2183, lon: 72.9781 },
+  { name: "Kalyan", district: "Thane", state: "Maharashtra", lat: 19.2403, lon: 73.1305 },
+  { name: "Dombivli", district: "Thane", state: "Maharashtra", lat: 19.2184, lon: 73.0867 },
+  { name: "Mira Bhayandar", district: "Thane", state: "Maharashtra", lat: 19.2813, lon: 72.8561 },
+  { name: "Vasai", district: "Palghar", state: "Maharashtra", lat: 19.3919, lon: 72.8397 },
+  { name: "Virar", district: "Palghar", state: "Maharashtra", lat: 19.4700, lon: 72.8000 },
+  { name: "Panvel", district: "Raigad", state: "Maharashtra", lat: 18.9894, lon: 73.1175 },
+  { name: "Lonavala", district: "Pune", state: "Maharashtra", lat: 18.7557, lon: 73.4091 },
+  { name: "Khandala", district: "Pune", state: "Maharashtra", lat: 18.7614, lon: 73.3742 },
+  { name: "Mahabaleshwar", district: "Satara", state: "Maharashtra", lat: 17.9237, lon: 73.6586 },
+  { name: "Panchgani", district: "Satara", state: "Maharashtra", lat: 17.9239, lon: 73.8016 },
+  { name: "Shirdi", district: "Ahmednagar", state: "Maharashtra", lat: 19.7645, lon: 74.4762 },
+  { name: "Nashik", district: "Nashik", state: "Maharashtra", lat: 19.9975, lon: 73.7898 },
+  { name: "Aurangabad", district: "Chhatrapati Sambhajinagar", state: "Maharashtra", lat: 19.8762, lon: 75.3433 },
+  { name: "Chhatrapati Sambhajinagar", district: "Chhatrapati Sambhajinagar", state: "Maharashtra", lat: 19.8762, lon: 75.3433 },
+  { name: "Kolhapur", district: "Kolhapur", state: "Maharashtra", lat: 16.7050, lon: 74.2433 },
+  { name: "Solapur", district: "Solapur", state: "Maharashtra", lat: 17.6599, lon: 75.9064 },
+  { name: "Nagpur", district: "Nagpur", state: "Maharashtra", lat: 21.1458, lon: 79.0882 },
+  { name: "Alibaug", district: "Raigad", state: "Maharashtra", lat: 18.6584, lon: 72.8711 },
+
+  // Gujarat & Rajasthan
+  { name: "Dwarka", district: "Devbhumi Dwarka", state: "Gujarat", lat: 22.2442, lon: 68.9685 },
+  { name: "Somnath", district: "Gir Somnath", state: "Gujarat", lat: 20.9022, lon: 70.4011 },
+  { name: "Gandhinagar", district: "Gandhinagar", state: "Gujarat", lat: 23.2156, lon: 72.6369 },
+  { name: "Surat", district: "Surat", state: "Gujarat", lat: 21.1702, lon: 72.8311 },
+  { name: "Vadodara", district: "Vadodara", state: "Gujarat", lat: 22.3072, lon: 73.1812 },
+  { name: "Rajkot", district: "Rajkot", state: "Gujarat", lat: 22.3039, lon: 70.8022 },
+  { name: "Bhavnagar", district: "Bhavnagar", state: "Gujarat", lat: 21.7645, lon: 72.1519 },
+  { name: "Jamnagar", district: "Jamnagar", state: "Gujarat", lat: 22.4707, lon: 70.0577 },
+  { name: "Bhuj", district: "Kutch", state: "Gujarat", lat: 23.2420, lon: 69.6669 },
+  { name: "Vapi", district: "Valsad", state: "Gujarat", lat: 20.3893, lon: 72.9106 },
+  { name: "Kota", district: "Kota", state: "Rajasthan", lat: 25.2138, lon: 75.8648 },
+  { name: "Jodhpur", district: "Jodhpur", state: "Rajasthan", lat: 26.2389, lon: 73.0243 },
+  { name: "Udaipur", district: "Udaipur", state: "Rajasthan", lat: 24.5854, lon: 73.7125 },
+  { name: "Mount Abu", district: "Sirohi", state: "Rajasthan", lat: 24.5925, lon: 72.7156 },
+  { name: "Ajmer", district: "Ajmer", state: "Rajasthan", lat: 26.4499, lon: 74.6399 },
+  { name: "Pushkar", district: "Ajmer", state: "Rajasthan", lat: 26.4897, lon: 74.5511 },
+  { name: "Bikaner", district: "Bikaner", state: "Rajasthan", lat: 28.0229, lon: 73.3119 },
+  { name: "Jaisalmer", district: "Jaisalmer", state: "Rajasthan", lat: 26.9157, lon: 70.9083 },
+  { name: "Alwar", district: "Alwar", state: "Rajasthan", lat: 27.5530, lon: 76.6346 },
+  { name: "Bharatpur", district: "Bharatpur", state: "Rajasthan", lat: 27.2152, lon: 77.5030 },
+
+  // South India
+  { name: "Ooty", district: "Nilgiris", state: "Tamil Nadu", lat: 11.4102, lon: 76.6950 },
+  { name: "Udhagamandalam", district: "Nilgiris", state: "Tamil Nadu", lat: 11.4102, lon: 76.6950 },
+  { name: "Kodaikanal", district: "Dindigul", state: "Tamil Nadu", lat: 10.2381, lon: 77.4892 },
+  { name: "Rameswaram", district: "Ramanathapuram", state: "Tamil Nadu", lat: 9.2876, lon: 79.3129 },
+  { name: "Madurai", district: "Madurai", state: "Tamil Nadu", lat: 9.9252, lon: 78.1198 },
+  { name: "Coimbatore", district: "Coimbatore", state: "Tamil Nadu", lat: 11.0168, lon: 76.9558 },
+  { name: "Tirupati", district: "Tirupati", state: "Andhra Pradesh", lat: 13.6288, lon: 79.4192 },
+  { name: "Visakhapatnam", district: "Visakhapatnam", state: "Andhra Pradesh", lat: 17.6868, lon: 83.2185 },
+  { name: "Vizag", district: "Visakhapatnam", state: "Andhra Pradesh", lat: 17.6868, lon: 83.2185 },
+  { name: "Vijayawada", district: "NTR", state: "Andhra Pradesh", lat: 16.5062, lon: 80.6480 },
+  { name: "Mysore", district: "Mysuru", state: "Karnataka", lat: 12.2958, lon: 76.6394 },
+  { name: "Mysuru", district: "Mysuru", state: "Karnataka", lat: 12.2958, lon: 76.6394 },
+  { name: "Mangalore", district: "Dakshina Kannada", state: "Karnataka", lat: 12.9141, lon: 74.8560 },
+  { name: "Mangaluru", district: "Dakshina Kannada", state: "Karnataka", lat: 12.9141, lon: 74.8560 },
+  { name: "Hampi", district: "Vijayanagara", state: "Karnataka", lat: 15.3350, lon: 76.4600 },
+  { name: "Gokarna", district: "Uttara Kannada", state: "Karnataka", lat: 14.5479, lon: 74.3188 },
+  { name: "Hubli", district: "Dharwad", state: "Karnataka", lat: 15.3647, lon: 75.1240 },
+  { name: "Belgaum", district: "Belagavi", state: "Karnataka", lat: 15.8497, lon: 74.4977 },
+  { name: "Warangal", district: "Warangal", state: "Telangana", lat: 17.9689, lon: 79.5941 },
+  { name: "Nizamabad", district: "Nizamabad", state: "Telangana", lat: 18.6725, lon: 78.0941 },
+  { name: "Munnar", district: "Idukki", state: "Kerala", lat: 10.0889, lon: 77.0595 },
+  { name: "Wayanad", district: "Wayanad", state: "Kerala", lat: 11.6854, lon: 76.1320 },
+  { name: "Kozhikode", district: "Kozhikode", state: "Kerala", lat: 11.2588, lon: 75.7804 },
+  { name: "Calicut", district: "Kozhikode", state: "Kerala", lat: 11.2588, lon: 75.7804 },
+  { name: "Kochi", district: "Ernakulam", state: "Kerala", lat: 9.9312, lon: 76.2673 },
+  { name: "Cochin", district: "Ernakulam", state: "Kerala", lat: 9.9312, lon: 76.2673 },
+  { name: "Alappuzha", district: "Alappuzha", state: "Kerala", lat: 9.4981, lon: 76.3388 },
+  { name: "Alleppey", district: "Alappuzha", state: "Kerala", lat: 9.4981, lon: 76.3388 },
+
+  // East & Central India
+  { name: "Siliguri", district: "Darjeeling", state: "West Bengal", lat: 26.7271, lon: 88.3953 },
+  { name: "Darjeeling", district: "Darjeeling", state: "West Bengal", lat: 27.0410, lon: 88.2663 },
+  { name: "Kalimpong", district: "Kalimpong", state: "West Bengal", lat: 27.0667, lon: 88.4667 },
+  { name: "Asansol", district: "Paschim Bardhaman", state: "West Bengal", lat: 23.6739, lon: 86.9524 },
+  { name: "Durgapur", district: "Paschim Bardhaman", state: "West Bengal", lat: 23.5204, lon: 87.3119 },
+  { name: "Kharagpur", district: "Paschim Medinipur", state: "West Bengal", lat: 22.3460, lon: 87.2320 },
+  { name: "Digha", district: "Purba Medinipur", state: "West Bengal", lat: 21.6266, lon: 87.5074 },
+  { name: "Jamshedpur", district: "East Singhbhum", state: "Jharkhand", lat: 22.8046, lon: 86.2029 },
+  { name: "Tatanagar", district: "East Singhbhum", state: "Jharkhand", lat: 22.8046, lon: 86.2029 },
+  { name: "Dhanbad", district: "Dhanbad", state: "Jharkhand", lat: 23.7957, lon: 86.4304 },
+  { name: "Bokaro", district: "Bokaro", state: "Jharkhand", lat: 23.6693, lon: 86.1511 },
+  { name: "Deoghar", district: "Deoghar", state: "Jharkhand", lat: 24.4826, lon: 86.7001 },
+  { name: "Rourkela", district: "Sundargarh", state: "Odisha", lat: 22.2604, lon: 84.8536 },
+  { name: "Puri", district: "Puri", state: "Odisha", lat: 19.8135, lon: 85.8312 },
+  { name: "Konark", district: "Puri", state: "Odisha", lat: 19.8876, lon: 86.0945 },
+  { name: "Cuttack", district: "Cuttack", state: "Odisha", lat: 20.4625, lon: 85.8830 },
+  { name: "Ujjain", district: "Ujjain", state: "Madhya Pradesh", lat: 23.1765, lon: 75.7885 },
+  { name: "Gwalior", district: "Gwalior", state: "Madhya Pradesh", lat: 26.2183, lon: 78.1828 },
+  { name: "Jabalpur", district: "Jabalpur", state: "Madhya Pradesh", lat: 23.1815, lon: 79.9864 },
+  { name: "Khajuraho", district: "Chhatarpur", state: "Madhya Pradesh", lat: 24.8318, lon: 79.9199 },
+  { name: "Muzaffarpur", district: "Muzaffarpur", state: "Bihar", lat: 26.1209, lon: 85.3647 },
+  { name: "Gaya", district: "Gaya", state: "Bihar", lat: 24.7955, lon: 85.0002 },
+  { name: "Bodh Gaya", district: "Gaya", state: "Bihar", lat: 24.6961, lon: 84.9869 },
+  { name: "Bhagalpur", district: "Bhagalpur", state: "Bihar", lat: 25.2425, lon: 87.0145 },
+  { name: "Darbhanga", district: "Darbhanga", state: "Bihar", lat: 26.1542, lon: 85.8918 },
+
+  // Northeast & Islands
+  { name: "Shillong", district: "East Khasi Hills", state: "Meghalaya", lat: 25.5788, lon: 91.8933 },
+  { name: "Cherrapunji", district: "East Khasi Hills", state: "Meghalaya", lat: 25.2700, lon: 91.7300 },
+  { name: "Mawsynram", district: "East Khasi Hills", state: "Meghalaya", lat: 25.2975, lon: 91.5826 },
+  { name: "Gangtok", district: "East Sikkim", state: "Sikkim", lat: 27.3389, lon: 88.6065 },
+  { name: "Port Blair", district: "South Andaman", state: "Andaman and Nicobar Islands", lat: 11.6234, lon: 92.7265 },
+  { name: "Havelock", district: "South Andaman", state: "Andaman and Nicobar Islands", lat: 11.9761, lon: 92.9876 }
+];
+
 document.addEventListener("DOMContentLoaded", async () => {
   // 1. Initialize Localization
   const savedLang = localStorage.getItem("climatetwin_lang") || "en";
@@ -284,6 +476,7 @@ async function loadData() {
   renderRiskView();
   renderReportsView();
   setupAnalyticsFilters();
+  setupRiskFilters();
 }
 
 /**
@@ -351,7 +544,9 @@ function populateStateSelectors() {
   const selects = [
     document.getElementById("dashboardStateSelect"),
     document.getElementById("predictionStateSelect"),
-    document.getElementById("assistantStateSelect")
+    document.getElementById("assistantStateSelect"),
+    document.getElementById("analyticsStateFilter"),
+    document.getElementById("riskStateFilter")
   ];
   
   const stateSet = new Set(allClimateData.map(r => r.State));
@@ -362,10 +557,10 @@ function populateStateSelectors() {
   selects.forEach(sel => {
     if (!sel) return;
     sel.innerHTML = "";
-    if (sel.id === "dashboardStateSelect") {
+    if (sel.id === "dashboardStateSelect" || sel.id === "analyticsStateFilter" || sel.id === "riskStateFilter") {
       const optAll = document.createElement("option");
       optAll.value = "all";
-      optAll.textContent = "🇮🇳 All States (National View)";
+      optAll.textContent = sel.id === "dashboardStateSelect" ? "🇮🇳 All States (National View)" : "🇮🇳 All States";
       sel.appendChild(optAll);
     } else if (sel.id === "assistantStateSelect") {
       const optPrompt = document.createElement("option");
@@ -608,13 +803,15 @@ function showToast(msg, duration = 3500) {
 }
 
 /**
- * Instant Autocomplete Search for 786 Districts & Exact Coordinates
+ * Instant Autocomplete Search for 786 Districts, 150+ City Aliases, Coordinates & Any Small Town
  */
 function setupDistrictSearch() {
   const input = document.getElementById("districtSearchInput");
   const dropdown = document.getElementById("districtSearchDropdown");
   const clearBtn = document.getElementById("btnClearDistrictSearch");
   if (!input || !dropdown) return;
+
+  let geocodeDebounceTimer = null;
 
   const handleSearch = () => {
     const val = input.value.trim().toLowerCase();
@@ -625,7 +822,6 @@ function setupDistrictSearch() {
     }
 
     if (clearBtn) clearBtn.style.display = "block";
-
     dropdown.innerHTML = "";
 
     // 1. Check if user typed numeric coordinates (e.g. "28.61, 77.20" or "26.85 80.95")
@@ -657,21 +853,46 @@ function setupDistrictSearch() {
       }
     }
 
-    // 2. Filter districts by name or state
+    // 2. Check CITY_ALIASES (Popular Cities, Hill Stations, Pilgrimage & Industrial Hubs)
+    const aliasMatches = (typeof CITY_ALIASES !== "undefined" ? CITY_ALIASES : []).filter(a =>
+      a.name.toLowerCase().includes(val) ||
+      a.district.toLowerCase().includes(val) ||
+      a.state.toLowerCase().includes(val)
+    ).slice(0, 6);
+
+    aliasMatches.forEach(a => {
+      const item = document.createElement("div");
+      item.className = "district-search-item";
+      item.style.background = "rgba(56, 189, 248, 0.08)";
+      item.innerHTML = `
+        <div>
+          <div class="district-search-item-title" style="color: #38bdf8;">🏙️ ${a.name} <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: normal;">(City/Town)</span></div>
+          <div class="district-search-item-state">District: <b>${a.district}</b>, ${a.state}</div>
+        </div>
+        <div>
+          <span class="badge-pill badge-medium" style="font-size: 0.7rem; padding: 2px 8px;">LIVE CHECK</span>
+        </div>
+      `;
+      item.onclick = () => {
+        input.value = `${a.name} (${a.district}, ${a.state})`;
+        dropdown.style.display = "none";
+
+        const stateSelect = document.getElementById("dashboardStateSelect");
+        if (stateSelect) {
+          stateSelect.value = a.state;
+          populateDistrictSelector(a.state, "dashboardDistrictSelect", a.district);
+        }
+
+        window.openDistrictDetailModal(a.state, a.district, a.lat, a.lon);
+      };
+      dropdown.appendChild(item);
+    });
+
+    // 3. Filter 786 districts by name or state
     const matches = allDistrictsData.filter(d => 
       (d.District && d.District.toLowerCase().includes(val)) ||
       (d.State && d.State.toLowerCase().includes(val))
     ).slice(0, 10);
-
-    if (!matches.length && dropdown.children.length === 0) {
-      dropdown.innerHTML = `
-        <div style="padding: 12px 16px; color: var(--text-muted); font-size: 0.85rem; text-align: center;">
-          No matching districts found for "<b>${input.value}</b>". Try another city, district, or coordinates.
-        </div>
-      `;
-      dropdown.style.display = "block";
-      return;
-    }
 
     matches.forEach(m => {
       const item = document.createElement("div");
@@ -702,6 +923,67 @@ function setupDistrictSearch() {
       };
       dropdown.appendChild(item);
     });
+
+    // 4. Dynamic Live Geocoding for ANY small town / village not in database
+    if (!matches.length && !aliasMatches.length && val.length >= 3) {
+      const searchingItem = document.createElement("div");
+      searchingItem.style.cssText = "padding: 12px 16px; color: var(--accent-primary); font-size: 0.82rem; text-align: center;";
+      searchingItem.innerHTML = `🛰️ <i>Searching geospatial registry for "<b>${input.value}</b>"...</i>`;
+      dropdown.appendChild(searchingItem);
+      dropdown.style.display = "block";
+
+      clearTimeout(geocodeDebounceTimer);
+      geocodeDebounceTimer = setTimeout(async () => {
+        try {
+          const gRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(val)}&count=4&language=en&format=json`);
+          if (gRes.ok) {
+            const gJson = await gRes.json();
+            if (gJson && gJson.results && gJson.results.length) {
+              dropdown.innerHTML = "";
+              gJson.results.forEach(res => {
+                const item = document.createElement("div");
+                item.className = "district-search-item";
+                item.style.background = "rgba(16, 185, 129, 0.08)";
+                const nearest = getNearestDistrictStatic(res.latitude, res.longitude);
+                item.innerHTML = `
+                  <div>
+                    <div class="district-search-item-title" style="color: #34d399;">🌐 ${res.name}</div>
+                    <div class="district-search-item-state">${res.admin1 || ''} (${res.country}) • Nearest District: ${nearest ? nearest.District : 'Indian Grid'}</div>
+                  </div>
+                  <div>
+                    <span class="badge-pill badge-low" style="font-size: 0.7rem; padding: 2px 8px;">VERIFIED</span>
+                  </div>
+                `;
+                item.onclick = () => {
+                  input.value = `${res.name}, ${res.admin1 || res.country}`;
+                  dropdown.style.display = "none";
+                  window.lookupCoordinatesTelemetry(res.latitude, res.longitude);
+                };
+                dropdown.appendChild(item);
+              });
+              dropdown.style.display = "block";
+              return;
+            }
+          }
+        } catch (e) {}
+
+        dropdown.innerHTML = `
+          <div style="padding: 12px 16px; color: var(--text-muted); font-size: 0.85rem; text-align: center;">
+            No matching location found for "<b>${input.value}</b>". Try another city, district name, or coordinates.
+          </div>
+        `;
+        dropdown.style.display = "block";
+      }, 350);
+      return;
+    }
+
+    if (!dropdown.children.length) {
+      dropdown.innerHTML = `
+        <div style="padding: 12px 16px; color: var(--text-muted); font-size: 0.85rem; text-align: center;">
+          No matching districts found for "<b>${input.value}</b>". Try another city or coordinates.
+        </div>
+      `;
+    }
 
     dropdown.style.display = "block";
   };
@@ -1336,33 +1618,144 @@ function renderDashboardView() {
 /**
  * Render Risk Intelligence View Elements with Interactive Hazard Diagnosis
  */
+/**
+ * Render Risk Intelligence View Elements with Interactive Hazard Diagnosis
+ * Supports both Critical Districts (786 districts) and Vulnerable States (36 states)
+ */
 function renderRiskView() {
   const tbody = document.getElementById("highRiskTableBody");
   if (!tbody) return;
 
-  const highRisk = allClimateData.filter(r => r.Risk === "High");
+  const viewMode = document.getElementById("riskViewMode")?.value || "districts";
+  const stateFilter = document.getElementById("riskStateFilter")?.value || "all";
+  const searchVal = document.getElementById("riskSearchInput")?.value.toLowerCase().trim() || "";
+  const tierVal = document.getElementById("riskTierFilter")?.value || "all";
+
+  const thTitle = document.getElementById("thRiskDistrictOrState");
+  if (thTitle) {
+    thTitle.textContent = viewMode === "districts" ? "District / City" : "State / UT";
+  }
+
   tbody.innerHTML = "";
 
-  highRisk.forEach(r => {
-    const diag = getRiskDiagnosis(r);
-    const tr = document.createElement("tr");
-    tr.className = "state-row";
-    tr.innerHTML = `
-      <td><strong>📍 ${r.State}</strong></td>
-      <td>${r.Temperature} °C</td>
-      <td>${r.Rainfall} mm</td>
-      <td>${r.Humidity} %</td>
-      <td><span style="color: #ef4444; font-weight: 700;">${r.AQI}</span></td>
-      <td>
-        <button class="btn-risk-detail badge-high" onclick="window.openRiskDetailModal('${r.State}')" title="Click to view detailed hazard breakdown & NDMA precautions">
-          <span>🔴 HIGH RISK</span>
-          <span style="font-weight: 500; opacity: 0.95;">• ${diag.shortLabel}</span>
-          <span style="margin-left: 4px; font-size: 0.72rem; color: #fca5a5;">🔍 Click to View</span>
-        </button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
+  if (viewMode === "districts") {
+    const dataset = (allDistrictsData && allDistrictsData.length) ? allDistrictsData : [];
+
+    const filtered = dataset.filter(row => {
+      // 1. State filter
+      if (stateFilter !== "all" && row.State !== stateFilter) return false;
+
+      // 2. Search query (matches district, state, or city alias)
+      if (searchVal) {
+        const matchDist = row.District && row.District.toLowerCase().includes(searchVal);
+        const matchState = row.State && row.State.toLowerCase().includes(searchVal);
+        const matchAlias = (typeof CITY_ALIASES !== "undefined" ? CITY_ALIASES : []).some(a => 
+          a.district.toLowerCase() === row.District.toLowerCase() && 
+          (a.name.toLowerCase().includes(searchVal) || a.district.toLowerCase().includes(searchVal))
+        );
+        if (!matchDist && !matchState && !matchAlias) return false;
+      }
+
+      // 3. Risk / Anomaly tier filter
+      const isCritical = row.Risk === "High" || row.AQI >= 120 || row.Temperature >= 35 || row.Rainfall >= 20;
+      const isExtreme = row.Temperature >= 35 || row.AQI >= 150 || row.Rainfall >= 30;
+      const isMedium = row.Risk === "Medium" || (row.AQI >= 100 && row.AQI < 120) || (row.Temperature >= 30 && row.Temperature < 35);
+
+      if (tierVal === "all") return isCritical;
+      if (tierVal === "Extreme") return isExtreme;
+      if (tierVal === "Medium") return isMedium;
+      if (tierVal === "all_data") return true;
+      return isCritical;
+    });
+
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 24px;">No critical anomaly districts matching current filters. Try selecting "Show All Records" or clearing search.</td></tr>`;
+      return;
+    }
+
+    // Sort by most severe (highest AQI + Temperature)
+    filtered.sort((a, b) => (b.AQI + b.Temperature) - (a.AQI + a.Temperature));
+
+    tbody.innerHTML = filtered.slice(0, 150).map(r => {
+      const diag = getRiskDiagnosis(r);
+      const riskClass = (r.Risk === "High" || r.AQI >= 120 || r.Temperature >= 35) ? "badge-high" : (r.Risk === "Medium" ? "badge-medium" : "badge-low");
+      const aqiColor = r.AQI >= 150 ? "#ef4444" : (r.AQI >= 100 ? "#f59e0b" : "#10b981");
+
+      return `
+        <tr class="state-row">
+          <td><strong>📍 ${r.District}</strong></td>
+          <td>${r.State}</td>
+          <td><span style="${r.Temperature >= 35 ? 'color: #ef4444; font-weight:700;' : ''}">${r.Temperature} °C</span></td>
+          <td><span style="${r.Rainfall >= 20 ? 'color: #38bdf8; font-weight:700;' : ''}">${r.Rainfall} mm</span></td>
+          <td>${r.Humidity} %</td>
+          <td><span style="color: ${aqiColor}; font-weight: 700;">${r.AQI}</span></td>
+          <td>
+            <button class="btn-risk-detail ${riskClass}" onclick="window.openRiskDetailModal('${r.State}')" title="Click for risk diagnosis & NDMA advisory">
+              <span>${r.Risk}</span>
+              <span style="font-weight: 500; opacity: 0.95;">• ${diag.shortLabel}</span>
+            </button>
+          </td>
+          <td>
+            <button class="btn-table-action" onclick="window.openDistrictDetailModal('${r.State}', '${r.District}', ${r.Latitude}, ${r.Longitude})" title="1-Click Real-time Satellite Telemetry Check">
+              ⚡ Live Check
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+  } else {
+    // States mode (36 States)
+    const dataset = allClimateData;
+
+    const filtered = dataset.filter(row => {
+      if (stateFilter !== "all" && row.State !== stateFilter) return false;
+      if (searchVal && !row.State.toLowerCase().includes(searchVal)) return false;
+
+      const isCritical = row.Risk === "High" || row.AQI >= 120 || row.Temperature >= 35;
+      const isExtreme = row.Temperature >= 35 || row.AQI >= 150;
+      const isMedium = row.Risk === "Medium";
+
+      if (tierVal === "all") return isCritical;
+      if (tierVal === "Extreme") return isExtreme;
+      if (tierVal === "Medium") return isMedium;
+      if (tierVal === "all_data") return true;
+      return isCritical;
+    });
+
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 24px;">No matching high-risk states found.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(r => {
+      const diag = getRiskDiagnosis(r);
+      const riskClass = r.Risk === "High" ? "badge-high" : (r.Risk === "Medium" ? "badge-medium" : "badge-low");
+      const aqiColor = r.AQI >= 150 ? "#ef4444" : (r.AQI >= 100 ? "#f59e0b" : "#10b981");
+
+      return `
+        <tr class="state-row">
+          <td><strong>🇮🇳 ${r.State}</strong></td>
+          <td>National Entity</td>
+          <td><span style="${r.Temperature >= 35 ? 'color: #ef4444; font-weight:700;' : ''}">${r.Temperature} °C</span></td>
+          <td>${r.Rainfall} mm</td>
+          <td>${r.Humidity} %</td>
+          <td><span style="color: ${aqiColor}; font-weight: 700;">${r.AQI}</span></td>
+          <td>
+            <button class="btn-risk-detail ${riskClass}" onclick="window.openRiskDetailModal('${r.State}')">
+              <span>${r.Risk}</span>
+              <span style="font-weight: 500; opacity: 0.95;">• ${diag.shortLabel}</span>
+            </button>
+          </td>
+          <td>
+            <button class="btn-table-action" onclick="window.openDistrictDetailModal('${r.State}', '', ${r.Latitude}, ${r.Longitude})">
+              ⚡ Live Check
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
 }
 
 /**
@@ -1811,65 +2204,169 @@ function renderAnalyticsView() {
 }
 
 /**
- * Render State Registry Data Table with Filter & Search
+ * Render National Registry Data Table with 786 Districts vs 36 States Toggle, State Filter, Search, and Live Telemetry Action
  */
 function renderAnalyticsTable(dataset) {
   const tbody = document.getElementById("analyticsTableBody");
   if (!tbody) return;
 
+  const viewMode = document.getElementById("analyticsViewMode")?.value || "districts";
+  const stateFilter = document.getElementById("analyticsStateFilter")?.value || "all";
   const searchVal = document.getElementById("analyticsSearchInput")?.value.toLowerCase().trim() || "";
   const riskVal = document.getElementById("analyticsRiskFilter")?.value || "all";
 
-  const filtered = dataset.filter(row => {
-    const matchName = row.State.toLowerCase().includes(searchVal);
-    const matchRisk = riskVal === "all" || row.Risk === riskVal;
-    return matchName && matchRisk;
-  });
-
-  if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">No matching states found.</td></tr>`;
-    return;
+  const thTitle = document.getElementById("thDistrictOrState");
+  if (thTitle) {
+    thTitle.textContent = viewMode === "districts" ? "District / City" : "State / UT";
   }
 
-  tbody.innerHTML = filtered.map(row => {
-    let riskBadgeClass = "badge-low";
-    if (row.Risk === "High") riskBadgeClass = "badge-high";
-    else if (row.Risk === "Medium") riskBadgeClass = "badge-medium";
+  tbody.innerHTML = "";
 
-    let aqiColor = "#10b981";
-    if (row.AQI >= 150) aqiColor = "#ef4444";
-    else if (row.AQI >= 100) aqiColor = "#f59e0b";
+  if (viewMode === "districts") {
+    const sourceData = (allDistrictsData && allDistrictsData.length) ? allDistrictsData : dataset;
 
-    const diag = getRiskDiagnosis(row);
+    const filtered = sourceData.filter(row => {
+      // 1. State filter
+      if (stateFilter !== "all" && row.State !== stateFilter) return false;
 
-    return `
-      <tr class="state-row">
-        <td><strong>📍 ${row.State}</strong></td>
-        <td>${row.Temperature} °C</td>
-        <td>${row.Rainfall} mm</td>
-        <td>${row.Humidity} %</td>
-        <td><span style="color: ${aqiColor}; font-weight: 700;">${row.AQI}</span></td>
-        <td>
-          <button class="btn-risk-detail ${riskBadgeClass}" onclick="window.openRiskDetailModal('${row.State}')" title="Click to view why this risk was flagged & precautions">
-            <span>${row.Risk}</span>
-            <span style="font-size: 0.75rem; opacity: 0.95;">• ${diag.shortLabel}</span>
-            <span style="font-size: 0.72rem;">ℹ️</span>
-          </button>
-        </td>
-      </tr>
-    `;
-  }).join("");
+      // 2. Search query (matches district, state, or city alias)
+      if (searchVal) {
+        const matchDist = row.District && row.District.toLowerCase().includes(searchVal);
+        const matchState = row.State && row.State.toLowerCase().includes(searchVal);
+        const matchAlias = (typeof CITY_ALIASES !== "undefined" ? CITY_ALIASES : []).some(a => 
+          a.district.toLowerCase() === row.District.toLowerCase() && 
+          (a.name.toLowerCase().includes(searchVal) || a.district.toLowerCase().includes(searchVal))
+        );
+        if (!matchDist && !matchState && !matchAlias) return false;
+      }
+
+      // 3. Risk filter
+      if (riskVal !== "all" && row.Risk !== riskVal) return false;
+
+      return true;
+    });
+
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 24px;">No districts found matching current search and filters.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.slice(0, 200).map(row => {
+      let riskBadgeClass = "badge-low";
+      if (row.Risk === "High" || row.AQI >= 120 || row.Temperature >= 35) riskBadgeClass = "badge-high";
+      else if (row.Risk === "Medium") riskBadgeClass = "badge-medium";
+
+      let aqiColor = "#10b981";
+      if (row.AQI >= 150) aqiColor = "#ef4444";
+      else if (row.AQI >= 100) aqiColor = "#f59e0b";
+
+      const diag = getRiskDiagnosis(row);
+
+      return `
+        <tr class="state-row">
+          <td><strong>📍 ${row.District}</strong></td>
+          <td>${row.State}</td>
+          <td>${row.Temperature} °C</td>
+          <td>${row.Rainfall} mm</td>
+          <td>${row.Humidity} %</td>
+          <td><span style="color: ${aqiColor}; font-weight: 700;">${row.AQI}</span></td>
+          <td>
+            <button class="btn-risk-detail ${riskBadgeClass}" onclick="window.openRiskDetailModal('${row.State}')" title="Click to view why this risk was flagged & precautions">
+              <span>${row.Risk}</span>
+              <span style="font-size: 0.75rem; opacity: 0.95;">• ${diag.shortLabel}</span>
+              <span style="font-size: 0.72rem;">ℹ️</span>
+            </button>
+          </td>
+          <td>
+            <button class="btn-table-action" onclick="window.openDistrictDetailModal('${row.State}', '${row.District}', ${row.Latitude}, ${row.Longitude})" title="1-Click Real-time Satellite Telemetry Check">
+              ⚡ Live Check
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+  } else {
+    // States mode (36 States)
+    const sourceData = (allClimateData && allClimateData.length) ? allClimateData : dataset;
+
+    const filtered = sourceData.filter(row => {
+      if (stateFilter !== "all" && row.State !== stateFilter) return false;
+      if (searchVal && !row.State.toLowerCase().includes(searchVal)) return false;
+      if (riskVal !== "all" && row.Risk !== riskVal) return false;
+      return true;
+    });
+
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 24px;">No states found matching current filters.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(row => {
+      let riskBadgeClass = "badge-low";
+      if (row.Risk === "High") riskBadgeClass = "badge-high";
+      else if (row.Risk === "Medium") riskBadgeClass = "badge-medium";
+
+      let aqiColor = "#10b981";
+      if (row.AQI >= 150) aqiColor = "#ef4444";
+      else if (row.AQI >= 100) aqiColor = "#f59e0b";
+
+      const diag = getRiskDiagnosis(row);
+
+      return `
+        <tr class="state-row">
+          <td><strong>🇮🇳 ${row.State}</strong></td>
+          <td>National Entity</td>
+          <td>${row.Temperature} °C</td>
+          <td>${row.Rainfall} mm</td>
+          <td>${row.Humidity} %</td>
+          <td><span style="color: ${aqiColor}; font-weight: 700;">${row.AQI}</span></td>
+          <td>
+            <button class="btn-risk-detail ${riskBadgeClass}" onclick="window.openRiskDetailModal('${row.State}')" title="Click to view why this risk was flagged & precautions">
+              <span>${row.Risk}</span>
+              <span style="font-size: 0.75rem; opacity: 0.95;">• ${diag.shortLabel}</span>
+              <span style="font-size: 0.72rem;">ℹ️</span>
+            </button>
+          </td>
+          <td>
+            <button class="btn-table-action" onclick="window.openDistrictDetailModal('${row.State}', '', ${row.Latitude}, ${row.Longitude})" title="1-Click Real-time Satellite Telemetry Check">
+              ⚡ Live Check
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
 }
 
 /**
  * Setup Analytics Table Search and Risk Filter Event Listeners
  */
 function setupAnalyticsFilters() {
+  const viewMode = document.getElementById("analyticsViewMode");
+  const stateFilter = document.getElementById("analyticsStateFilter");
   const searchInput = document.getElementById("analyticsSearchInput");
   const riskSelect = document.getElementById("analyticsRiskFilter");
 
+  viewMode?.addEventListener("change", () => renderAnalyticsTable(allClimateData));
+  stateFilter?.addEventListener("change", () => renderAnalyticsTable(allClimateData));
   searchInput?.addEventListener("input", () => renderAnalyticsTable(allClimateData));
   riskSelect?.addEventListener("change", () => renderAnalyticsTable(allClimateData));
+}
+
+/**
+ * Setup Risk Intelligence Table Filter Event Listeners
+ */
+function setupRiskFilters() {
+  const viewMode = document.getElementById("riskViewMode");
+  const stateFilter = document.getElementById("riskStateFilter");
+  const searchInput = document.getElementById("riskSearchInput");
+  const tierSelect = document.getElementById("riskTierFilter");
+
+  viewMode?.addEventListener("change", () => renderRiskView());
+  stateFilter?.addEventListener("change", () => renderRiskView());
+  searchInput?.addEventListener("input", () => renderRiskView());
+  tierSelect?.addEventListener("change", () => renderRiskView());
 }
 
 /**

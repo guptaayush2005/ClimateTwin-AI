@@ -509,37 +509,46 @@
           <div style="height: 280px; position: relative;"><canvas id="analyticsAqiChart"></canvas></div>
         </div>
 
-        <!-- National State-by-State Climate Registry (Data Table) -->
+        <!-- National All-India District & State Climate Registry (Data Table) -->
         <div class="card-glass" style="margin-bottom: 24px;">
           <div class="analytics-table-header">
             <div>
-              <h3 data-i18n="analytics_table_title">National State-by-State Climate Registry</h3>
-              <p style="font-size: 0.8rem; color: var(--text-muted);">Real-time meteorological telemetry records with interactive filter.</p>
+              <h3 data-i18n="analytics_table_title">National All-India District & State Climate Registry</h3>
+              <p style="font-size: 0.8rem; color: var(--text-muted);">Real-time meteorological telemetry records across all 786 Indian districts & states.</p>
             </div>
-            <div class="table-filter-group">
-              <input id="analyticsSearchInput" type="text" class="table-search-input" placeholder="Search Indian state by name..." data-i18n-placeholder="search_state_placeholder" />
-              <select id="analyticsRiskFilter" class="table-risk-select">
-                <option value="all" data-i18n="filter_all">All States</option>
-                <option value="High" data-i18n="filter_high">High Risk Only</option>
-                <option value="Medium" data-i18n="filter_medium">Moderate Risk Only</option>
-                <option value="Low" data-i18n="filter_low">Low Risk Only</option>
+            <div class="table-filter-group" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+              <select id="analyticsViewMode" class="table-risk-select" style="min-width: 140px;">
+                <option value="districts">🏙️ All Districts (786)</option>
+                <option value="states">🇮🇳 36 States & UTs</option>
               </select>
-              <a href="/api/export-csv" download="climate_data.csv" class="btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px;">
+              <select id="analyticsStateFilter" class="table-risk-select" style="min-width: 150px;">
+                <option value="all">🇮🇳 All States</option>
+              </select>
+              <input id="analyticsSearchInput" type="text" class="table-search-input" placeholder="Search any district, city, or state..." style="min-width: 200px;" />
+              <select id="analyticsRiskFilter" class="table-risk-select">
+                <option value="all">All Risk Tiers</option>
+                <option value="High">🚨 High Risk Only</option>
+                <option value="Medium">⚠️ Moderate Risk Only</option>
+                <option value="Low">🌱 Low Risk Only</option>
+              </select>
+              <a href="/api/export-csv" download="climate_data.csv" class="btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 0.82rem;">
                 📥 <span data-i18n="export_csv">Download CSV</span>
               </a>
             </div>
           </div>
 
-          <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+          <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th data-i18n="th_state">State / UT</th>
+                  <th id="thDistrictOrState">District / City</th>
+                  <th>State / UT</th>
                   <th data-i18n="th_temp">Temperature (°C)</th>
                   <th data-i18n="th_rain">Rainfall (mm)</th>
                   <th data-i18n="th_hum">Humidity (%)</th>
                   <th data-i18n="th_aqi">Air Quality (AQI)</th>
                   <th data-i18n="th_risk">Risk Tier</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="analyticsTableBody">
@@ -604,27 +613,48 @@
         </div>
 
         <div class="card-glass">
-          <h3 style="margin-bottom: 16px;" data-i18n="high_risk_states_table">High Risk States Overview</h3>
-          <div class="table-responsive">
+          <div class="analytics-table-header">
+            <div>
+              <h3 style="margin-bottom: 4px;" data-i18n="high_risk_states_table">Critical Climate Risk & Anomaly Intelligence</h3>
+              <p style="font-size: 0.8rem; color: var(--text-muted);">Real-time early warning telemetry detecting extreme heat, floods, and toxic pollution across 786 Indian districts & states.</p>
+            </div>
+            <div class="table-filter-group" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+              <select id="riskViewMode" class="table-risk-select" style="min-width: 140px;">
+                <option value="districts">🚨 Critical Districts (786)</option>
+                <option value="states">🇮🇳 Vulnerable States (36)</option>
+              </select>
+              <select id="riskStateFilter" class="table-risk-select" style="min-width: 150px;">
+                <option value="all">🇮🇳 All States</option>
+              </select>
+              <input id="riskSearchInput" type="text" class="table-search-input" placeholder="Search any district, city, or state..." style="min-width: 200px;" />
+              <select id="riskTierFilter" class="table-risk-select">
+                <option value="all">🚨 High & Critical Risks</option>
+                <option value="Extreme">🔥 Extreme Heat (>35°C) / AQI (>150)</option>
+                <option value="Medium">⚠️ Moderate Risks</option>
+                <option value="all_data">📋 Show All Records</option>
+              </select>
+              <a href="/api/export-csv?high_risk_only=true" download="high_risk_climate_zones.csv" class="btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 0.82rem;">
+                📥 <span data-i18n="download_high_risk_csv">Download CSV</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>State</th>
-                  <th>Temperature</th>
-                  <th>Rainfall</th>
-                  <th>Humidity</th>
+                  <th id="thRiskDistrictOrState">District / City</th>
+                  <th>State / UT</th>
+                  <th>Temperature (°C)</th>
+                  <th>Rainfall (mm)</th>
+                  <th>Humidity (%)</th>
                   <th>AQI</th>
-                  <th>Status</th>
+                  <th>Risk & Primary Hazard</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="highRiskTableBody"></tbody>
             </table>
-          </div>
-
-          <div style="margin-top: 20px; display: flex; gap: 14px;">
-            <a href="/api/export-csv?high_risk_only=true" download="high_risk_states.csv" class="btn-primary" style="text-decoration: none;">
-              📥 <span data-i18n="download_high_risk_csv">Download High Risk States CSV</span>
-            </a>
           </div>
         </div>
       </section>

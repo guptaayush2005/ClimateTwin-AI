@@ -320,18 +320,25 @@ def ask_assistant_api(req: AssistantQueryRequest):
 
 
 @api_router.get("/export-csv")
-def export_csv_api(high_risk_only: bool = False):
+def export_csv_api(high_risk_only: bool = False, districts: bool = False):
     """
-    Exports climate dataset as CSV.
+    Exports climate dataset as CSV (states or all 786 districts).
     """
-    df = load_climate_data()
-    if high_risk_only:
-        df = get_high_risk_states_df(df)
+    if districts:
+        df = load_districts_data()
+        if high_risk_only:
+            df = df[(df["Risk"] == "High") | (df["AQI"] >= 120) | (df["Temperature"] >= 35) | (df["Rainfall"] >= 20)]
+        filename = "high_risk_districts.csv" if high_risk_only else "india_districts_climate.csv"
+    else:
+        df = load_climate_data()
+        if high_risk_only:
+            df = get_high_risk_states_df(df)
+        filename = "high_risk_states.csv" if high_risk_only else "climate_data.csv"
     csv_data = export_dataframe_to_csv(df)
     return Response(
         content=csv_data,
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={'high_risk_states' if high_risk_only else 'climate_data'}.csv"}
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
 
