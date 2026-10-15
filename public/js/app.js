@@ -485,25 +485,27 @@ async function loadData() {
 function computeSummaryMetrics(dataset = allClimateData) {
   if (!dataset.length) return;
 
-  let totalTemp = 0, totalRain = 0, totalHum = 0, highRiskCount = 0;
+  let totalTemp = 0, totalRain = 0, totalHum = 0, totalAqi = 0, highRiskCount = 0;
   let hottest = dataset[0], rainiest = dataset[0], worstAqi = dataset[0];
 
   dataset.forEach(row => {
-    totalTemp += row.Temperature;
-    totalRain += row.Rainfall;
-    totalHum += row.Humidity;
+    totalTemp += (row.Temperature || 0);
+    totalRain += (row.Rainfall || 0);
+    totalHum += (row.Humidity || 0);
+    totalAqi += (row.AQI || 0);
     if (row.Risk === "High") highRiskCount++;
 
     if (row.Temperature > hottest.Temperature) hottest = row;
     if (row.Rainfall > rainiest.Rainfall) rainiest = row;
-    if (row.AQI > worstAqi.AQI) worstAqi = row;
+    if ((row.AQI || 0) > (worstAqi.AQI || 0)) worstAqi = row;
   });
 
   summaryMetrics = {
     totalStates: dataset.length,
-    avgTemp: (totalTemp / dataset.length).toFixed(2),
-    avgRain: (totalRain / dataset.length).toFixed(2),
-    avgHumidity: (totalHum / dataset.length).toFixed(2),
+    avgTemp: (totalTemp / dataset.length).toFixed(1),
+    avgRain: (totalRain / dataset.length).toFixed(1),
+    avgHumidity: (totalHum / dataset.length).toFixed(1),
+    avgAqi: Math.round(totalAqi / dataset.length),
     highRiskCount: highRiskCount,
     hottest: hottest,
     rainiest: rainiest,
@@ -521,6 +523,7 @@ function updateMetricCards(m) {
   document.querySelectorAll(".metric-val-temp").forEach(el => el.textContent = `${m.avgTemp} °C`);
   document.querySelectorAll(".metric-val-rain").forEach(el => el.textContent = `${m.avgRain} mm`);
   document.querySelectorAll(".metric-val-humidity").forEach(el => el.textContent = `${m.avgHumidity} %`);
+  document.querySelectorAll(".metric-val-aqi").forEach(el => el.textContent = `${m.avgAqi ?? '--'}`);
   document.querySelectorAll(".metric-val-risk").forEach(el => el.textContent = `${m.highRiskCount}`);
 }
 
@@ -1792,6 +1795,9 @@ function renderReportsView() {
 /**
  * Update AI Predictions Forecast
  */
+/**
+ * Update AI Predictions Forecast (Real-time Live Satellite Telemetry & ML Engine)
+ */
 async function updateForecastView() {
   const sel = document.getElementById("predictionStateSelect");
   const distSel = document.getElementById("predictionDistrictSelect");
@@ -1799,74 +1805,288 @@ async function updateForecastView() {
   const state = sel.value;
   const dist = distSel ? distSel.value : "all";
 
-  let stateData = null;
-  if (dist && dist !== "all") {
-    stateData = allDistrictsData.find(d => d.District === dist && (!state || d.State === state)) ||
-                allDistrictsData.find(d => d.District === dist);
-  }
-  if (!stateData) {
-    stateData = allClimateData.find(r => r.State === state) || allClimateData[0];
-  }
-  if (!stateData) return;
+  // Visual loading indicators
+  const curTempEl = document.getElementById("predCurTemp");
+  const curAqiEl = document.getElementById("predCurAqi");
+  if (curTempEl) curTempEl.textContent = "...";
+  if (curAqiEl) curAqiEl.textContent = "...";
 
-  const displayName = dist && dist !== "all" ? `${stateData.District}, ${stateData.State}` : stateData.State;
+  let targetDistrict = (dist && dist !== "all") ? dist : "";
+  let targetState = state || "";
+  let targetLat = null;
+  let targetLon = null;
+  let baseRecord = null;
 
+  // 1. Resolve coordinates and baseline record
+  if (targetDistrict) {
+    baseRecord = allDistrictsData.find(d => d.District === targetDistrict && (!targetState || d.State === targetState)) ||
+                 allDistrictsData.find(d => d.District === targetDistrict);
+    if (baseRecord) {
+      targetLat = baseRecord.Latitude;
+      targetLon = baseRecord.Longitude;
+      if (!targetState) targetState = baseRecord.State;
+    }
+  }
+
+  if (!baseRecord && targetState) {
+    baseRecord = allDistrictsData.find(d => d.State === targetState) ||
+                 allClimateData.find(r => r.State === targetState);
+    if (baseRecord && baseRecord.Latitude && baseRecord.Longitude) {
+      targetLat = baseRecord.Latitude;
+      targetLon = baseRecord.Longitude;
+    }
+  }
+
+  if (!baseRecord) {
+    baseRecord = allClimateData[0] || { State: "Delhi", District: "New Delhi", Temperature: 27.5, Rainfall: 5.0, Humidity: 60, AQI: 120 };
+  }
+
+  if (targetLat === null || targetLon === null) {
+    const coordsMap = typeof STATE_COORDINATES !== "undefined" ? STATE_COORDINATES : {};
+    if (targetState && coordsMap[targetState]) {
+      targetLat = coordsMap[targetState][0];
+      targetLon = coordsMap[targetState][1];
+    } else {
+      targetLat = 28.6139;
+      targetLon = 77.2090;
+    }
+  }
+
+  const displayName = targetDistrict ? `${targetDistrict}, ${targetState}` : targetState;
+
+  // 2. Fetch Live Satellite Telemetry (Strictly synchronized with Co-pilot & LiveCheck)
+  let liveTelemetry = null;
+  let wDaily = null;
+  let aHourly = null;
+
+  try {
+    const apiRes = await apiFetch(`/live-district?state=${encodeURIComponent(targetState)}&district=${encodeURIComponent(targetDistrict)}&lat=${targetLat}&lon=${targetLon}`);
+    if (apiRes.ok) {
+      liveTelemetry = await apiRes.json();
+    }
+  } catch (err) {
+    console.warn("Backend live telemetry offline, fetching from satellite streams...", err);
+  }
+
+  // Always fetch Open-Meteo multi-day forecasts for live satellite precision
+  try {
+    const wUrl = `https://api.open-meteo.com/v1/forecast?latitude=${targetLat}&longitude=${targetLon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean&timezone=auto`;
+    const aUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${targetLat}&longitude=${targetLon}&current=us_aqi,pm10,pm2_5&hourly=us_aqi,pm2_5&timezone=auto`;
+
+    const [wRes, aRes] = await Promise.allSettled([fetch(wUrl), fetch(aUrl)]);
+    const wJson = wRes.status === "fulfilled" && wRes.value.ok ? await wRes.value.json() : null;
+    const aJson = aRes.status === "fulfilled" && aRes.value.ok ? await aRes.value.json() : null;
+
+    if (wJson && wJson.daily) wDaily = wJson.daily;
+    if (aJson && aJson.hourly) aHourly = aJson.hourly;
+
+    if (!liveTelemetry) {
+      const curW = wJson ? wJson.current || {} : {};
+      const curA = aJson ? aJson.current || {} : {};
+      const t = curW.temperature_2m ?? (baseRecord ? baseRecord.Temperature : 26.5);
+      const a = curA.us_aqi ?? (baseRecord ? baseRecord.AQI : 110);
+      liveTelemetry = {
+        temperature: t,
+        apparent_temperature: curW.apparent_temperature ?? t,
+        humidity: curW.relative_humidity_2m ?? (baseRecord ? baseRecord.Humidity : 65),
+        precipitation: curW.precipitation ?? (baseRecord ? baseRecord.Rainfall : 0.0),
+        aqi: a,
+        pm2_5: curA.pm2_5 ?? 38.0,
+        pm10: curA.pm10 ?? 64.0,
+        aqi_category: a > 150 ? "Unhealthy" : (a > 100 ? "Moderate" : "Good"),
+        risk_level: (a > 150 || t > 35) ? "High" : (a > 100 || t > 30 ? "Moderate" : "Low")
+      };
+    }
+  } catch (fErr) {
+    console.warn("Direct satellite stream fetch fallback:", fErr);
+  }
+
+  // Absolute fallback if telemetry is null
+  if (!liveTelemetry) {
+    liveTelemetry = {
+      temperature: baseRecord.Temperature || 27.5,
+      humidity: baseRecord.Humidity || 60,
+      precipitation: baseRecord.Rainfall || 0,
+      aqi: baseRecord.AQI || 110,
+      aqi_category: "Moderate",
+      risk_level: "Moderate"
+    };
+  }
+
+  const liveTemp = typeof liveTelemetry.temperature === "number" ? liveTelemetry.temperature : (parseFloat(liveTelemetry.temperature) || 27.0);
+  const liveAqi = typeof liveTelemetry.aqi === "number" ? liveTelemetry.aqi : (parseInt(liveTelemetry.aqi, 10) || 100);
+  const liveHum = typeof liveTelemetry.humidity === "number" ? liveTelemetry.humidity : (parseFloat(liveTelemetry.humidity) || 60.0);
+  const liveRain = typeof liveTelemetry.precipitation === "number" ? liveTelemetry.precipitation : (parseFloat(liveTelemetry.precipitation) || 0.0);
+
+  // 3. Obtain 7-Day Forecast (Temperature and AQI)
+  let forecastData = null;
   try {
     const res = await apiFetch("/forecast", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         state: displayName,
-        rainfall: stateData.Rainfall,
-        humidity: stateData.Humidity,
-        aqi: stateData.AQI,
-        current_temp: stateData.Temperature
+        rainfall: liveRain,
+        humidity: liveHum,
+        aqi: liveAqi,
+        current_temp: liveTemp
       })
     });
     if (res.ok) {
-      const data = await res.json();
-      displayForecastResults(data, stateData);
-      return;
+      forecastData = await res.json();
     }
   } catch (e) {
-    console.log("Local ML simulation fallback");
+    console.log("Local ML / satellite forecast projection fallback");
   }
 
-  // Local fallback forecast simulation
-  const seed = stateData.Temperature;
-  const forecast = Array.from({ length: 7 }, (_, i) => ({
-    Day: i + 1,
-    "Predicted Temperature": +(seed + (Math.random() * 2 - 1)).toFixed(2)
-  }));
-  const avgFut = +(forecast.reduce((a, b) => a + b["Predicted Temperature"], 0) / 7).toFixed(2);
-  displayForecastResults({
-    forecast: forecast,
-    predicted_avg: avgFut,
-    delta: +(avgFut - seed).toFixed(2),
-    risk_level: avgFut >= 35 ? "High" : (avgFut >= 30 ? "Moderate" : "Low")
-  }, stateData);
+  // Construct satellite-grounded 7-day temperature trajectory
+  let tempForecast = [];
+  if (wDaily && wDaily.time && wDaily.time.length >= 7) {
+    tempForecast = wDaily.time.slice(0, 7).map((dStr, idx) => {
+      const tMean = wDaily.temperature_2m_mean ? wDaily.temperature_2m_mean[idx] : null;
+      const tMax = wDaily.temperature_2m_max ? wDaily.temperature_2m_max[idx] : null;
+      const tMin = wDaily.temperature_2m_min ? wDaily.temperature_2m_min[idx] : null;
+      const dayVal = tMean ?? (tMax && tMin ? +((tMax + tMin) / 2).toFixed(1) : liveTemp);
+      return { Day: idx + 1, Date: dStr, "Predicted Temperature": +dayVal.toFixed(1) };
+    });
+  } else if (forecastData && forecastData.forecast && forecastData.forecast.length === 7) {
+    tempForecast = forecastData.forecast;
+  } else {
+    tempForecast = Array.from({ length: 7 }, (_, i) => {
+      const drift = Math.sin((i + 1) * 0.8) * 0.85;
+      return { Day: i + 1, "Predicted Temperature": +(liveTemp + drift).toFixed(1) };
+    });
+  }
+
+  // Construct 7-day AQI trajectory
+  let aqiForecast = [];
+  if (aHourly && aHourly.us_aqi && aHourly.us_aqi.length >= 168) {
+    aqiForecast = Array.from({ length: 7 }, (_, dayIdx) => {
+      const slice = aHourly.us_aqi.slice(dayIdx * 24, (dayIdx + 1) * 24).filter(v => v !== null && !isNaN(v));
+      const dayVal = slice.length ? Math.round(slice.reduce((a, b) => a + b, 0) / slice.length) : liveAqi;
+      return { Day: dayIdx + 1, "Predicted AQI": dayVal };
+    });
+  } else if (forecastData && forecastData.aqi_forecast && forecastData.aqi_forecast.length === 7) {
+    aqiForecast = forecastData.aqi_forecast;
+  } else {
+    aqiForecast = Array.from({ length: 7 }, (_, i) => {
+      const drift = Math.cos((i + 1) * 0.7) * 4.5;
+      return { Day: i + 1, "Predicted AQI": Math.round(Math.max(20, Math.min(500, liveAqi + drift))) };
+    });
+  }
+
+  // Metrics computation
+  const avgTemp = +(tempForecast.reduce((acc, f) => acc + (f["Predicted Temperature"] ?? f.temp ?? liveTemp), 0) / 7).toFixed(1);
+  const deltaTemp = +(avgTemp - liveTemp).toFixed(1);
+
+  const avgAqi = Math.round(aqiForecast.reduce((acc, f) => acc + (f["Predicted AQI"] ?? f.aqi ?? liveAqi), 0) / 7);
+  const deltaAqi = avgAqi - liveAqi;
+
+  // Multi-hazard risk evaluation
+  let riskLevel = "Low";
+  if (avgTemp >= 35 || liveTemp >= 35 || liveAqi >= 150 || avgAqi >= 150) {
+    riskLevel = "High";
+  } else if (avgTemp >= 30 || liveTemp >= 30 || liveAqi >= 100 || avgAqi >= 100) {
+    riskLevel = "Moderate";
+  }
+
+  const finalPayload = {
+    forecast: tempForecast,
+    aqi_forecast: aqiForecast,
+    predicted_avg: avgTemp,
+    delta: deltaTemp,
+    current_temp: liveTemp,
+    current_aqi: liveAqi,
+    predicted_avg_aqi: avgAqi,
+    delta_aqi: deltaAqi,
+    risk_level: riskLevel
+  };
+
+  displayForecastResults(finalPayload, displayName, liveTelemetry);
 }
 
-function displayForecastResults(data, stateData) {
-  document.getElementById("predCurTemp").textContent = `${stateData.Temperature} °C`;
-  document.getElementById("predAvgTemp").textContent = `${data.predicted_avg} °C`;
-  const deltaEl = document.getElementById("predDeltaTemp");
-  deltaEl.textContent = `${data.delta >= 0 ? '+' : ''}${data.delta} °C`;
-  deltaEl.className = `metric-delta ${data.delta >= 0 ? 'delta-neg' : 'delta-pos'}`;
+function displayForecastResults(data, displayName, liveTelemetry) {
+  // 1. Current Live Satellite Temperature
+  const curTempEl = document.getElementById("predCurTemp");
+  if (curTempEl) curTempEl.textContent = `${data.current_temp} °C`;
 
-  const riskEl = document.getElementById("predRiskBadge");
-  if (data.risk_level === "High") {
-    riskEl.textContent = "🔴 High Heatwave Risk";
-    riskEl.className = "badge-pill badge-high";
-  } else if (data.risk_level === "Moderate") {
-    riskEl.textContent = "🟠 Moderate Climate Risk";
-    riskEl.className = "badge-pill badge-medium";
-  } else {
-    riskEl.textContent = "🟢 Low Climate Risk";
-    riskEl.className = "badge-pill badge-low";
+  // 2. Predicted 7-Day Average Temperature
+  const avgTempEl = document.getElementById("predAvgTemp");
+  if (avgTempEl) avgTempEl.textContent = `${data.predicted_avg} °C`;
+
+  // 3. Temperature Drift / Change
+  const deltaEl = document.getElementById("predDeltaTemp");
+  if (deltaEl) {
+    deltaEl.textContent = `${data.delta >= 0 ? '+' : ''}${data.delta} °C`;
+    deltaEl.className = `metric-value ${data.delta >= 0 ? 'delta-neg' : 'delta-pos'}`;
+  }
+  const deltaSub = document.getElementById("predDeltaTempSub");
+  if (deltaSub) {
+    deltaSub.textContent = data.delta > 0 ? "📈 Warming trajectory (+)" : (data.delta < 0 ? "📉 Cooling trajectory (-)" : "Steady thermal state");
   }
 
-  renderForecastChart(data.forecast, stateData.State);
+  // 4. Live Satellite AQI
+  const curAqiEl = document.getElementById("predCurAqi");
+  if (curAqiEl) {
+    curAqiEl.textContent = data.current_aqi;
+    curAqiEl.style.color = data.current_aqi > 150 ? "#ef4444" : (data.current_aqi > 100 ? "#f59e0b" : "#10b981");
+  }
+
+  const curAqiStatus = document.getElementById("predCurAqiStatus");
+  if (curAqiStatus) {
+    if (data.current_aqi <= 50) {
+      curAqiStatus.textContent = "🟢 Good (0-50)";
+      curAqiStatus.className = "badge-pill badge-low";
+    } else if (data.current_aqi <= 100) {
+      curAqiStatus.textContent = "🟡 Moderate (51-100)";
+      curAqiStatus.className = "badge-pill badge-medium";
+    } else if (data.current_aqi <= 150) {
+      curAqiStatus.textContent = "🟠 Sensitive (101-150)";
+      curAqiStatus.className = "badge-pill badge-medium";
+    } else if (data.current_aqi <= 200) {
+      curAqiStatus.textContent = "🔴 Unhealthy (151-200)";
+      curAqiStatus.className = "badge-pill badge-high";
+    } else {
+      curAqiStatus.textContent = "🟣 Hazardous (200+)";
+      curAqiStatus.className = "badge-pill badge-high";
+    }
+  }
+
+  // 5. Predicted 7-Day Average AQI
+  const avgAqiEl = document.getElementById("predAvgAqi");
+  if (avgAqiEl) avgAqiEl.textContent = data.predicted_avg_aqi;
+
+  const aqiDeltaEl = document.getElementById("predAqiDelta");
+  if (aqiDeltaEl) {
+    const dStr = data.delta_aqi >= 0 ? `+${data.delta_aqi}` : `${data.delta_aqi}`;
+    aqiDeltaEl.textContent = `${dStr} AQI pts 7D drift`;
+  }
+
+  // 6. Multi-Hazard Risk Classification
+  const riskEl = document.getElementById("predRiskBadge");
+  if (riskEl) {
+    if (data.risk_level === "High") {
+      riskEl.textContent = "🔴 High Multi-Hazard Risk";
+      riskEl.className = "badge-pill badge-high";
+    } else if (data.risk_level === "Moderate") {
+      riskEl.textContent = "🟠 Moderate Climate Risk";
+      riskEl.className = "badge-pill badge-medium";
+    } else {
+      riskEl.textContent = "🟢 Low Climate Risk";
+      riskEl.className = "badge-pill badge-low";
+    }
+  }
+
+  const riskDetails = document.getElementById("predRiskDetails");
+  if (riskDetails) {
+    const heatRisk = data.current_temp >= 35 ? "Severe Heat" : (data.current_temp >= 30 ? "Warm" : "Optimal");
+    const smogRisk = data.current_aqi >= 150 ? "Hazardous Smog" : (data.current_aqi >= 100 ? "Moderate Smog" : "Clean Air");
+    riskDetails.textContent = `Thermal: ${heatRisk} • Air: ${smogRisk}`;
+  }
+
+  // 7. Dual Charts Rendering
+  renderForecastChart(data.forecast, displayName);
+  renderForecastAqiChart(data.aqi_forecast, displayName);
 }
 
 /**

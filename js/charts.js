@@ -10,6 +10,7 @@ let humidityChartInstance = null;
 let aqiScatterInstance = null;
 let riskPieInstance = null;
 let forecastChartInstance = null;
+let forecastAqiChartInstance = null;
 let analyticsRainfallChartInstance = null;
 let analyticsAqiChartInstance = null;
 
@@ -293,7 +294,10 @@ function renderForecastChart(forecastDays, stateName) {
   if (!ctx) return;
 
   const labels = forecastDays.map(f => `Day ${f.Day}`);
-  const values = forecastDays.map(f => f["Predicted Temperature"]);
+  const values = forecastDays.map(f => {
+    const v = f["Predicted Temperature"] ?? f.temperature ?? f.temp ?? 0;
+    return typeof v === "number" ? +v.toFixed(1) : parseFloat(v) || 0;
+  });
 
   if (forecastChartInstance) forecastChartInstance.destroy();
 
@@ -305,22 +309,98 @@ function renderForecastChart(forecastDays, stateName) {
         label: `Temperature Forecast - ${stateName} (°C)`,
         data: values,
         borderColor: "#3b82f6",
-        backgroundColor: "rgba(59, 130, 246, 0.15)",
+        backgroundColor: "rgba(59, 130, 246, 0.18)",
         fill: true,
         tension: 0.35,
         pointBackgroundColor: "#60a5fa",
-        pointRadius: 6
+        pointBorderColor: "#ffffff",
+        pointBorderWidth: 1.5,
+        pointRadius: 6,
+        borderWidth: 2.5
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: "#f8fafc" } }
+        legend: { labels: { color: "#f8fafc" } },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return ` Predicted Temp: ${context.parsed.y} °C`;
+            }
+          }
+        }
       },
       scales: {
         x: { ticks: { color: "#94a3b8" }, grid: { display: false } },
         y: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(255, 255, 255, 0.05)" } }
+      }
+    }
+  });
+}
+
+/**
+ * 7-Day Air Quality Index (AQI) Trajectory Line Chart
+ */
+function renderForecastAqiChart(forecastAqiDays, locationName) {
+  const ctx = document.getElementById("forecastAqiChart")?.getContext("2d");
+  if (!ctx) return;
+
+  const labels = (forecastAqiDays || []).map(f => `Day ${f.Day}`);
+  const values = (forecastAqiDays || []).map(f => {
+    const v = f["Predicted AQI"] ?? f.aqi ?? 100;
+    return typeof v === "number" ? Math.round(v) : parseInt(v, 10) || 100;
+  });
+
+  if (forecastAqiChartInstance) forecastAqiChartInstance.destroy();
+
+  const avg = values.length ? (values.reduce((a, b) => a + b, 0) / values.length) : 100;
+  const strokeColor = avg > 150 ? "#ef4444" : (avg > 100 ? "#f59e0b" : "#10b981");
+  const fillColor = avg > 150 ? "rgba(239, 68, 68, 0.18)" : (avg > 100 ? "rgba(245, 158, 11, 0.18)" : "rgba(16, 185, 129, 0.18)");
+  const pointColor = avg > 150 ? "#f87171" : (avg > 100 ? "#fbbf24" : "#34d399");
+
+  forecastAqiChartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: `Air Quality Index (AQI) - ${locationName}`,
+        data: values,
+        borderColor: strokeColor,
+        backgroundColor: fillColor,
+        fill: true,
+        tension: 0.35,
+        pointBackgroundColor: pointColor,
+        pointBorderColor: "#ffffff",
+        pointBorderWidth: 1.5,
+        pointRadius: 6,
+        borderWidth: 2.5
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: "#f8fafc" } },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const val = context.parsed.y;
+              const cat = val > 200 ? "Very Unhealthy" : (val > 150 ? "Unhealthy" : (val > 100 ? "Moderate" : (val > 50 ? "Satisfactory" : "Good")));
+              return ` AQI: ${val} (${cat})`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: "#94a3b8" }, grid: { display: false } },
+        y: {
+          ticks: { color: "#94a3b8" },
+          grid: { color: "rgba(255, 255, 255, 0.05)" },
+          suggestedMin: 30,
+          suggestedMax: 200
+        }
       }
     }
   });

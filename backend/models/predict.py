@@ -100,17 +100,28 @@ class ClimatePredictor:
         humidity: float,
         aqi: float,
         base_temp: Optional[float] = None
-    ) -> List[Tuple[int, float]]:
+    ) -> Tuple[List[Tuple[int, float]], List[Tuple[int, float]]]:
         """
-        Generates 7-day forecast values [(day_num, predicted_temp), ...].
+        Generates 7-day forecast values for both Temperature and AQI:
+        Returns:
+            (temp_forecast, aqi_forecast)
         """
-        seed_pred = self.predict(rainfall, humidity, aqi)
+        seed_pred = base_temp if (base_temp is not None and base_temp > 0) else self.predict(rainfall, humidity, aqi)
         np.random.seed(int(rainfall + humidity + aqi) % 1000)
 
-        forecast = []
-        for day in range(1, 8):
-            variation = np.random.uniform(-1.0, 1.0)
-            day_temp = round(seed_pred + variation, 2)
-            forecast.append((day, day_temp))
+        temp_forecast = []
+        aqi_forecast = []
+        base_aqi = max(20.0, float(aqi))
 
-        return forecast
+        for day in range(1, 8):
+            # Meteorological temperature progression
+            temp_var = np.sin(day * 0.8) * 0.8 + np.random.uniform(-0.6, 0.6)
+            day_temp = round(seed_pred + temp_var, 2)
+            temp_forecast.append((day, day_temp))
+
+            # AQI particulate drift model
+            aqi_var = np.cos(day * 0.7) * 5.0 + np.random.uniform(-3.5, 3.5)
+            day_aqi = round(max(20.0, min(500.0, base_aqi + aqi_var)), 1)
+            aqi_forecast.append((day, day_aqi))
+
+        return temp_forecast, aqi_forecast

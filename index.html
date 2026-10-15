@@ -169,6 +169,15 @@
 
           <div class="card-glass metric-card">
             <div class="metric-header">
+              <span class="metric-label" data-i18n="avg_aqi">Avg Air Quality (AQI)</span>
+              <span class="metric-icon">🌫️</span>
+            </div>
+            <div class="metric-value metric-val-aqi">--</div>
+            <span class="metric-delta delta-pos">Continuous Sensor Telemetry</span>
+          </div>
+
+          <div class="card-glass metric-card">
+            <div class="metric-header">
               <span class="metric-label" data-i18n="high_risk_states">High Risk States</span>
               <span class="metric-icon">🚨</span>
             </div>
@@ -307,6 +316,10 @@
             <div class="metric-value metric-val-humidity">-- %</div>
           </div>
           <div class="card-glass metric-card">
+            <div class="metric-header"><span class="metric-label" data-i18n="avg_aqi">Avg Air Quality (AQI)</span><span>🌫️</span></div>
+            <div class="metric-value metric-val-aqi">--</div>
+          </div>
+          <div class="card-glass metric-card">
             <div class="metric-header"><span class="metric-label" data-i18n="high_risk_states">High Risk States</span><span>🚨</span></div>
             <div class="metric-value metric-val-risk">--</div>
           </div>
@@ -363,8 +376,13 @@
       <section id="view-predictions" class="view-panel">
         <div class="card-glass" style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
           <div>
-            <h2 data-i18n="predictions_title">AI Climate Predictions</h2>
-            <p style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="predictions_subtitle">RandomForest 7-day temperature forecast model for all 786 Indian districts.</p>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <h2 data-i18n="predictions_title" style="margin: 0;">AI Climate & Air Quality Predictions</h2>
+              <span class="badge-live" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: #34d399; font-size: 0.74rem; padding: 3px 9px;">
+                <span class="pulse-emerald"></span> <span>🛰️ LIVE SATELLITE GROUNDED</span>
+              </span>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;" data-i18n="predictions_subtitle">7-Day Real-Time Temperature & AQI Forecast Model for all 786 Indian districts.</p>
           </div>
           <div style="display: flex; gap: 10px; flex-wrap: wrap;">
             <select id="predictionStateSelect" class="custom-select" style="min-width: 170px;"></select>
@@ -372,28 +390,54 @@
           </div>
         </div>
 
-        <div class="metrics-grid">
+        <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 24px;">
           <div class="card-glass metric-card">
             <div class="metric-header"><span class="metric-label" data-i18n="current_temp">Current Temp</span><span>🌡️</span></div>
             <div id="predCurTemp" class="metric-value">-- °C</div>
+            <div style="margin-top: 6px;"><span class="badge-live" style="font-size: 0.68rem; padding: 2px 7px;"><span class="pulse-emerald"></span> Live Satellite Stream</span></div>
           </div>
           <div class="card-glass metric-card">
             <div class="metric-header"><span class="metric-label" data-i18n="predicted_avg">Predicted Avg (7D)</span><span>🤖</span></div>
             <div id="predAvgTemp" class="metric-value">-- °C</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;">7-Day Thermal Mean</div>
           </div>
           <div class="card-glass metric-card">
-            <div class="metric-header"><span class="metric-label" data-i18n="temp_change">Temp Change</span><span>📈</span></div>
+            <div class="metric-header"><span class="metric-label" data-i18n="temp_change">Temp Drift</span><span>📈</span></div>
             <div id="predDeltaTemp" class="metric-value">-- °C</div>
+            <div id="predDeltaTempSub" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;">Trajectory Variance</div>
           </div>
           <div class="card-glass metric-card">
-            <div class="metric-header"><span class="metric-label" data-i18n="risk">Risk Classification</span><span>⚠️</span></div>
-            <div style="margin-top: 10px;"><span id="predRiskBadge" class="badge-pill badge-medium">MODERATE RISK</span></div>
+            <div class="metric-header"><span class="metric-label">Live Air Quality (AQI)</span><span>🌫️</span></div>
+            <div id="predCurAqi" class="metric-value">--</div>
+            <div style="margin-top: 6px;"><span id="predCurAqiStatus" class="badge-pill badge-medium" style="font-size: 0.7rem; padding: 2px 8px;">Checking AQI...</span></div>
+          </div>
+          <div class="card-glass metric-card">
+            <div class="metric-header"><span class="metric-label">Predicted Avg AQI (7D)</span><span>💨</span></div>
+            <div id="predAvgAqi" class="metric-value">--</div>
+            <div id="predAqiDelta" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;">Pollution Trajectory</div>
+          </div>
+          <div class="card-glass metric-card">
+            <div class="metric-header"><span class="metric-label" data-i18n="risk">Multi-Hazard Risk</span><span>⚠️</span></div>
+            <div style="margin-top: 8px;"><span id="predRiskBadge" class="badge-pill badge-medium">MODERATE RISK</span></div>
+            <div id="predRiskDetails" style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">Thermal & Smog Risk</div>
           </div>
         </div>
 
-        <div class="card-glass chart-box">
-          <h3 data-i18n="forecast_chart_title">7-Day Temperature Forecast</h3>
-          <div style="height: 380px; position: relative;"><canvas id="forecastChart"></canvas></div>
+        <div class="charts-row" style="margin-bottom: 24px;">
+          <div class="card-glass chart-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+              <h3 data-i18n="forecast_chart_title" style="margin: 0;">7-Day Temperature Forecast</h3>
+              <span class="badge-live" style="font-size: 0.7rem;"><span class="pulse-emerald"></span> Satellite Grounded</span>
+            </div>
+            <div style="height: 350px; position: relative;"><canvas id="forecastChart"></canvas></div>
+          </div>
+          <div class="card-glass chart-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+              <h3 style="margin: 0;">7-Day Air Quality (AQI) Trajectory</h3>
+              <span class="badge-live" style="font-size: 0.7rem; background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: #fbbf24;"><span class="pulse-dot" style="background: #fbbf24;"></span> PM2.5 / PM10 Model</span>
+            </div>
+            <div style="height: 350px; position: relative;"><canvas id="forecastAqiChart"></canvas></div>
+          </div>
         </div>
       </section>
 

@@ -278,6 +278,9 @@ def get_forecast_api(req: ForecastRequest):
     )
     forecast["forecast"] = forecast["forecast_df"].to_dict(orient="records")
     forecast.pop("forecast_df", None)
+    if "aqi_forecast_df" in forecast and forecast["aqi_forecast_df"] is not None:
+        forecast["aqi_forecast"] = forecast["aqi_forecast_df"].to_dict(orient="records")
+        forecast.pop("aqi_forecast_df", None)
     return forecast
 
 

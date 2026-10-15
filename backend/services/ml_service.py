@@ -37,25 +37,44 @@ def get_7_day_forecast(
     current_temp: float
 ) -> Dict[str, Any]:
     """
-    Generates a 7-day temperature forecast dataset and summary delta.
+    Generates a 7-day temperature and AQI forecast dataset, summary delta, and multi-hazard risk evaluation.
     """
     predictor = get_predictor()
-    forecast_pairs = predictor.predict_7_day_forecast(rainfall, humidity, aqi, base_temp=current_temp)
+    res = predictor.predict_7_day_forecast(rainfall, humidity, aqi, base_temp=current_temp)
+    if isinstance(res, tuple) and len(res) == 2:
+        temp_pairs, aqi_pairs = res
+    else:
+        temp_pairs = res
+        aqi_pairs = [(d, round(aqi + np.random.uniform(-4, 4), 1)) for d, _ in temp_pairs]
 
-    days = [p[0] for p in forecast_pairs]
-    temps = [p[1] for p in forecast_pairs]
+    days = [p[0] for p in temp_pairs]
+    temps = [p[1] for p in temp_pairs]
+    aqis = [p[1] for p in aqi_pairs]
 
     forecast_df = pd.DataFrame({
         "Day": days,
         "Predicted Temperature": temps
     })
 
-    avg_future = round(float(np.mean(temps)), 2)
-    delta = round(avg_future - current_temp, 2)
+    aqi_forecast_df = pd.DataFrame({
+        "Day": days,
+        "Predicted AQI": aqis
+    })
 
-    if avg_future >= THRESHOLDS["HEATWAVE_TEMP_HIGH"]:
+    avg_future_temp = round(float(np.mean(temps)), 2)
+    delta_temp = round(avg_future_temp - current_temp, 2)
+    avg_future_aqi = round(float(np.mean(aqis)), 1)
+    delta_aqi = round(avg_future_aqi - aqi, 1)
+
+    # Multi-hazard evaluation (Heatwave + Toxic Air)
+    is_high_heat = avg_future_temp >= THRESHOLDS["HEATWAVE_TEMP_HIGH"]
+    is_mod_heat = avg_future_temp >= THRESHOLDS["HEATWAVE_TEMP_MODERATE"]
+    is_high_aqi = avg_future_aqi >= THRESHOLDS["HAZARDOUS_AQI"] or aqi >= 150
+    is_mod_aqi = avg_future_aqi >= THRESHOLDS["POOR_AQI"] or aqi >= 100
+
+    if is_high_heat or is_high_aqi:
         risk_level = "High"
-    elif avg_future >= THRESHOLDS["HEATWAVE_TEMP_MODERATE"]:
+    elif is_mod_heat or is_mod_aqi:
         risk_level = "Moderate"
     else:
         risk_level = "Low"
@@ -63,10 +82,14 @@ def get_7_day_forecast(
     return {
         "state": state_name,
         "current_temp": current_temp,
-        "predicted_avg": avg_future,
-        "delta": delta,
+        "predicted_avg": avg_future_temp,
+        "delta": delta_temp,
+        "current_aqi": aqi,
+        "predicted_avg_aqi": avg_future_aqi,
+        "delta_aqi": delta_aqi,
         "risk_level": risk_level,
-        "forecast_df": forecast_df
+        "forecast_df": forecast_df,
+        "aqi_forecast_df": aqi_forecast_df
     }
 
 
