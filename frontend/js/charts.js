@@ -49,6 +49,16 @@ function initIndiaMap(records) {
     }, null, { position: "topright" }).addTo(indiaMap);
 
     markersLayer = L.layerGroup().addTo(indiaMap);
+
+    // Interactive Click on Map to inspect coordinates & nearest district telemetry
+    indiaMap.on("click", (e) => {
+      const lat = e.latlng.lat;
+      const lon = e.latlng.lng;
+      if (lat < 5.0 || lat > 38.0 || lon < 66.0 || lon > 99.0) return;
+      if (typeof window.handleMapCoordinateClick === "function") {
+        window.handleMapCoordinateClick(lat, lon);
+      }
+    });
   }
 
   // Ensure map tiles render smoothly without container size bugs

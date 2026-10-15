@@ -104,7 +104,7 @@ def search_locations(query: str) -> List[Dict[str, Any]]:
     # Search matches in District and State
     matches = df[df["District"].str.lower().str.contains(q, na=False) | df["State"].str.lower().str.contains(q, na=False)]
     results = []
-    for _, row in matches.head(15).iterrows():
+    for _, row in matches.head(20).iterrows():
         results.append({
             "type": "district",
             "name": f"{row['District']}, {row['State']}",
@@ -119,6 +119,33 @@ def search_locations(query: str) -> List[Dict[str, Any]]:
             "risk": row["Risk"]
         })
     return results
+
+
+def get_nearest_district(lat: float, lon: float) -> Optional[Dict[str, Any]]:
+    """
+    Finds the nearest Indian district for any given latitude and longitude coordinates.
+    Computes Euclidean distance across 786 districts with approximate km distance.
+    """
+    df = load_districts_data()
+    if df.empty or "Latitude" not in df.columns or "Longitude" not in df.columns:
+        return None
+
+    # Calculate squared Euclidean distance in degree coordinates
+    distances = (df["Latitude"] - lat) ** 2 + (df["Longitude"] - lon) ** 2
+    closest_idx = distances.idxmin()
+    closest_row = df.loc[closest_idx]
+    
+    # Approximate distance in km (1 degree ~ 111 km)
+    dist_degrees = float((distances.loc[closest_idx]) ** 0.5)
+    approx_km = round(dist_degrees * 111.0, 1)
+
+    rec = closest_row.to_dict()
+    rec["distance_km"] = approx_km
+    rec["target_lat"] = lat
+    rec["target_lon"] = lon
+    return rec
+
+
 
 
 def load_climate_data(state: Optional[str] = None) -> pd.DataFrame:

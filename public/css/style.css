@@ -1886,4 +1886,179 @@ body {
   color: #f8fafc;
 }
 
+/* ==========================================================================
+   GPS GEOLOCATION, COORDINATES LOOKUP & VOICE INPUT / TTS STYLES
+   ========================================================================== */
+
+/* GPS My Location Button */
+.btn-gps {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-gps:hover {
+  background: rgba(16, 185, 129, 0.24);
+  border-color: #34d399;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-gps:active {
+  transform: translateY(0);
+}
+
+/* Coordinate Lookup Button */
+.btn-coord {
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-coord:hover {
+  background: rgba(59, 130, 246, 0.22);
+  border-color: #60a5fa;
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Voice Input / Microphone Button */
+.btn-mic-search, .btn-voice-input {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.15rem;
+  padding: 6px 10px;
+  color: var(--accent-cyan);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.btn-mic-search:hover, .btn-voice-input:hover {
+  background: rgba(6, 182, 212, 0.15);
+  transform: scale(1.08);
+}
+
+.btn-voice-input {
+  background: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  padding: 8px 14px;
+}
+
+/* Listening Pulse Animation */
+.btn-voice-input.listening, .btn-mic-search.listening {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: #ef4444 !important;
+  color: #ef4444 !important;
+  animation: mic-pulse 1.2s infinite;
+}
+
+@keyframes mic-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+  70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Text-to-Speech (TTS) Button on Bot Messages */
+.chat-message-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.btn-tts, .btn-copy-msg {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-tts:hover, .btn-copy-msg:hover {
+  background: rgba(37, 99, 235, 0.2);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #93c5fd;
+}
+
+.btn-tts.speaking {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+  color: #34d399;
+}
+
+/* Coordinate Presets Chips */
+.btn-preset-coord {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-preset-coord:hover {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: #3b82f6;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* Floating GPS Status Banner / Toast */
+.gps-status-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: rgba(9, 17, 36, 0.95);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #e2e8f0;
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(20px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.88rem;
+  animation: slide-up 0.3s ease;
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 

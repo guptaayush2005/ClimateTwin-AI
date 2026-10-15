@@ -3,8 +3,10 @@ ClimateTwin AI - Backend AI Assistant Service
 Processes natural language climate queries with multilingual understanding and localized responses.
 Supports English, Hindi (हिन्दी), Marathi (मराठी), Bengali (বাংলা), Tamil (தமிழ்).
 """
+import re
+from typing import Dict, Any, Optional
 import pandas as pd
-from backend.services.data_service import load_climate_data, get_summary_metrics, load_districts_data
+from backend.services.data_service import load_climate_data, get_summary_metrics, load_districts_data, get_nearest_district
 from backend.services.live_weather_service import fetch_live_district_telemetry
 
 
@@ -42,6 +44,90 @@ def ask_climate_assistant(question: str, df: Optional[pd.DataFrame] = None, lang
             "en": "👋 **Hello!** I am the ClimateTwin AI Copilot. You can ask me about temperature, rainfall, humidity, AQI, high-risk states, or specific weather conditions in any Indian state!"
         }
         return {"type": "success", "message": greetings.get(language, greetings["en"])}
+
+    # 0.4 Check Coordinates in query (e.g. "28.61, 77.20" or "lat 26.85 lon 80.95")
+    coord_matches = re.findall(r"[-+]?\d{1,3}\.\d+", q)
+    if len(coord_matches) >= 2:
+        try:
+            c_lat = float(coord_matches[0])
+            c_lon = float(coord_matches[1])
+            if 6.0 <= c_lat <= 38.0 and 68.0 <= c_lon <= 98.0:
+                nearest = get_nearest_district(c_lat, c_lon)
+                dist_name = nearest.get("District", "Target Coordinate") if nearest else "Coordinate Node"
+                state_name = nearest.get("State", "India") if nearest else "India"
+                dist_km = nearest.get("distance_km", 0.0) if nearest else 0.0
+
+                live = fetch_live_district_telemetry(c_lat, c_lon, state=state_name, district=dist_name)
+                temp = live["temperature"]
+                feels = live["apparent_temperature"]
+                rain = live["precipitation"]
+                hum = live["humidity"]
+                wind = live["wind_speed"]
+                aqi = live["aqi"]
+                cond = live["condition_hi"] if language in ["hi", "mr"] else live["condition"]
+                icon = live["icon"]
+                risk = live["risk_level"]
+                hazards = ", ".join(live["hazard_tags"])
+                advice = live["ndma_tips"][0] if live["ndma_tips"] else "मौसम अनुकूल है।"
+
+                if language == "hi":
+                    msg = (
+                        f"🌐 **निर्देशांक ({c_lat:.4f}° N, {c_lon:.4f}° E) — निकटतम जिला: {dist_name} ({state_name}, दूरी {dist_km} km):**\n\n"
+                        f"• {icon} **वर्तमान मौसम:** {cond}\n"
+                        f"• 🌡️ **लाइव तापमान:** **{temp} °C** (महसूस: {feels} °C)\n"
+                        f"• 🌧️ **वर्षा:** **{rain} mm** | 💧 **आर्द्रता:** **{hum} %**\n"
+                        f"• 💨 **हवा की गति:** **{wind} km/h**\n"
+                        f"• 🌫️ **वायु गुणवत्ता (AQI):** **{aqi}** ({live['aqi_category']})\n"
+                        f"• 🚨 **जोखिम स्तर:** **{risk} Risk** ({hazards})\n\n"
+                        f"🛡️ **सुरक्षा सलाह (NDMA):** {advice}"
+                    )
+                elif language == "mr":
+                    msg = (
+                        f"🌐 **निर्देशांक ({c_lat:.4f}° N, {c_lon:.4f}° E) — जवळचा जिल्हा: {dist_name} ({state_name}, अंतर {dist_km} km):**\n\n"
+                        f"• {icon} **सध्याचे हवामान:** {cond}\n"
+                        f"• 🌡️ **थेट तापमान:** **{temp} °C** (अनुभव: {feels} °C)\n"
+                        f"• 🌧️ **पाऊस:** **{rain} mm** | 💧 **आर्द्रता:** **{hum} %**\n"
+                        f"• 💨 **वाऱ्याचा वेग:** **{wind} km/h**\n"
+                        f"• 🌫️ **हवेची गुणवत्ता (AQI):** **{aqi}** ({live['aqi_category']})\n"
+                        f"• 🚨 **धोका पातळी:** **{risk} Risk** ({hazards})\n\n"
+                        f"🛡️ **सुरक्षा सल्ला (NDMA):** {advice}"
+                    )
+                elif language == "bn":
+                    msg = (
+                        f"🌐 **স্থানাঙ্ক ({c_lat:.4f}° N, {c_lon:.4f}° E) — নিকটতম জেলা: {dist_name} ({state_name}, দূরত্ব {dist_km} km):**\n\n"
+                        f"• {icon} **বর্তমান আবহাওয়া:** {cond}\n"
+                        f"• 🌡️ **সরাসরি তাপমাত্রা:** **{temp} °C** (অনুভূত: {feels} °C)\n"
+                        f"• 🌧️ **বৃষ্টিপাত:** **{rain} mm** | 💧 **আর্দ্রতা:** **{hum} %**\n"
+                        f"• 💨 **বাতাসের গতি:** **{wind} km/h**\n"
+                        f"• 🌫️ **বায়ু গুণমান (AQI):** **{aqi}** ({live['aqi_category']})\n"
+                        f"• 🚨 **ঝুঁকির মাত্রা:** **{risk} Risk** ({hazards})\n\n"
+                        f"🛡️ **এনডিএমএ সতর্কতা:** {advice}"
+                    )
+                elif language == "ta":
+                    msg = (
+                        f"🌐 **ஆயத்தொலைவுகள் ({c_lat:.4f}° N, {c_lon:.4f}° E) — அருகிலுள்ள மாவட்டம்: {dist_name} ({state_name}, தூரம் {dist_km} km):**\n\n"
+                        f"• {icon} **தற்போதைய வானிலை:** {cond}\n"
+                        f"• 🌡️ **நேரலை வெப்பநிலை:** **{temp} °C** (உணரப்படுவது: {feels} °C)\n"
+                        f"• 🌧️ **மழைப்பொழிவு:** **{rain} mm** | 💧 **ஈரப்பதம்:** **{hum} %**\n"
+                        f"• 💨 **காற்றின் வேகம்:** **{wind} km/h**\n"
+                        f"• 🌫️ **காற்றின் தரம் (AQI):** **{aqi}** ({live['aqi_category']})\n"
+                        f"• 🚨 **ஆபத்து நிலை:** **{risk} Risk** ({hazards})\n\n"
+                        f"🛡️ **பாதுகாப்பு வழிகாட்டல்:** {advice}"
+                    )
+                else:
+                    msg = (
+                        f"🌐 **Coordinates ({c_lat:.4f}° N, {c_lon:.4f}° E) — Nearest District: {dist_name} ({state_name}, {dist_km} km away):**\n\n"
+                        f"• {icon} **Current Condition:** {cond}\n"
+                        f"• 🌡️ **Live Temperature:** **{temp} °C** (Feels like {feels} °C)\n"
+                        f"• 🌧️ **Precipitation:** **{rain} mm** | 💧 **Humidity:** **{hum} %**\n"
+                        f"• 💨 **Wind Speed:** **{wind} km/h**\n"
+                        f"• 🌫️ **Air Quality (AQI):** **{aqi}** ({live['aqi_category']})\n"
+                        f"• 🚨 **Risk Severity:** **{risk} Risk** ({hazards})\n\n"
+                        f"🛡️ **NDMA Advisory:** {advice}"
+                    )
+                return {"type": "success", "message": msg, "district_data": live}
+        except Exception:
+            pass
 
     # 0.5 Check Indian Districts First
     districts_df = load_districts_data()

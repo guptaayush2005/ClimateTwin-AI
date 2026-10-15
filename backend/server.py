@@ -29,6 +29,7 @@ from backend.services.data_service import (
     get_districts_for_state,
     get_district_record,
     search_locations,
+    get_nearest_district,
 )
 from backend.services.ml_service import (
     predict_temperature,
@@ -154,6 +155,17 @@ def get_state_districts_map_api():
     return {"map": mapping, "total_states": len(mapping)}
 
 
+@api_router.get("/nearest-district")
+def get_nearest_district_api(lat: float = Query(...), lon: float = Query(...)):
+    """
+    Reverse-geocodes coordinates to the closest Indian district and returns its record with distance.
+    """
+    nearest = get_nearest_district(lat, lon)
+    if not nearest:
+        raise HTTPException(status_code=404, detail="No Indian district found near coordinates")
+    return nearest
+
+
 @api_router.get("/live-district")
 def get_live_district_api(
     state: Optional[str] = None,
@@ -163,13 +175,27 @@ def get_live_district_api(
 ):
     """
     Fetches real-time live satellite & station telemetry (current temp, humidity, precipitation,
-    wind, weather condition, US AQI, PM2.5, PM10, NDMA tips) for any Indian district.
+    wind, weather condition, US AQI, PM2.5, PM10, NDMA tips) for any Indian district or exact coordinate.
     """
     target_lat = lat
     target_lon = lon
     target_state = state or ""
     target_district = district or ""
+    nearest_meta = None
 
+    # If coordinates provided without district, find nearest Indian district
+    if target_lat is not None and target_lon is not None and not target_district:
+        nearest = get_nearest_district(float(target_lat), float(target_lon))
+        if nearest:
+            target_district = nearest.get("District", "")
+            target_state = nearest.get("State", "")
+            nearest_meta = {
+                "nearest_district": nearest.get("District"),
+                "nearest_state": nearest.get("State"),
+                "distance_km": nearest.get("distance_km", 0.0)
+            }
+
+    # If district provided without coordinates, find district's coordinates
     if (target_lat is None or target_lon is None) and target_district:
         rec = get_district_record(state=target_state, district=target_district)
         if rec:
@@ -190,6 +216,8 @@ def get_live_district_api(
         state=target_state,
         district=target_district
     )
+    if nearest_meta:
+        telemetry["nearest_district_meta"] = nearest_meta
     return telemetry
 
 
@@ -281,6 +309,7 @@ def get_nasa_satellite_api():
 
 
 @api_router.post("/ask")
+@api_router.post("/assistant")
 def ask_assistant_api(req: AssistantQueryRequest):
     """
     Natural Language Climate Assistant query in user's selected language.

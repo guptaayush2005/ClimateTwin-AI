@@ -260,6 +260,7 @@ async function loadData() {
   renderQuickDistrictPills();
   setupDistrictSearch();
   setupDistrictModal();
+  setupVoiceFeatures();
   renderHomeView();
   renderDashboardView();
   renderAnalyticsView();
@@ -516,7 +517,53 @@ function renderQuickDistrictPills() {
 }
 
 /**
- * Instant Autocomplete Search for 786 Districts
+ * Fast Euclidean distance computation for nearest district lookup
+ */
+function getNearestDistrictStatic(lat, lon) {
+  if (!allDistrictsData || !allDistrictsData.length) return null;
+  lat = Number(lat);
+  lon = Number(lon);
+  let best = null;
+  let minDistSq = Infinity;
+  for (const d of allDistrictsData) {
+    const dLat = Number(d.Latitude);
+    const dLon = Number(d.Longitude);
+    if (!isNaN(dLat) && !isNaN(dLon)) {
+      const distSq = (dLat - lat) ** 2 + (dLon - lon) ** 2;
+      if (distSq < minDistSq) {
+        minDistSq = distSq;
+        best = d;
+      }
+    }
+  }
+  if (best) {
+    const approxKm = Math.round(Math.sqrt(minDistSq) * 111.0 * 10) / 10;
+    return { ...best, distance_km: approxKm, target_lat: lat, target_lon: lon };
+  }
+  return null;
+}
+
+/**
+ * Floating glassmorphic toast notification
+ */
+function showToast(msg, duration = 3500) {
+  let toast = document.getElementById("climateTwinToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "climateTwinToast";
+    toast.className = "gps-status-toast";
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = msg;
+  toast.style.display = "flex";
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.style.display = "none";
+  }, duration);
+}
+
+/**
+ * Instant Autocomplete Search for 786 Districts & Exact Coordinates
  */
 function setupDistrictSearch() {
   const input = document.getElementById("districtSearchInput");
@@ -534,23 +581,53 @@ function setupDistrictSearch() {
 
     if (clearBtn) clearBtn.style.display = "block";
 
-    // Filter districts
+    dropdown.innerHTML = "";
+
+    // 1. Check if user typed numeric coordinates (e.g. "28.61, 77.20" or "26.85 80.95")
+    const coordMatches = val.match(/[-+]?\d{1,3}\.\d+/g);
+    if (coordMatches && coordMatches.length >= 2) {
+      const cLat = parseFloat(coordMatches[0]);
+      const cLon = parseFloat(coordMatches[1]);
+      if (cLat >= 6.0 && cLat <= 38.0 && cLon >= 68.0 && cLon <= 98.0) {
+        const nearest = getNearestDistrictStatic(cLat, cLon);
+        const item = document.createElement("div");
+        item.className = "district-search-item";
+        item.style.background = "rgba(6, 182, 212, 0.15)";
+        item.style.borderBottom = "1px solid rgba(6, 182, 212, 0.3)";
+        item.innerHTML = `
+          <div>
+            <div class="district-search-item-title" style="color: #38bdf8;">🌐 Coordinates (${cLat.toFixed(4)}° N, ${cLon.toFixed(4)}° E)</div>
+            <div class="district-search-item-state">${nearest ? `Nearest Station: ${nearest.District}, ${nearest.State} (${nearest.distance_km} km away)` : 'Indian Digital Twin Grid Node'}</div>
+          </div>
+          <div>
+            <span class="badge-pill badge-low" style="font-size: 0.7rem; padding: 2px 8px;">GO TO COORD</span>
+          </div>
+        `;
+        item.onclick = () => {
+          input.value = `${cLat.toFixed(4)}, ${cLon.toFixed(4)}`;
+          dropdown.style.display = "none";
+          window.lookupCoordinatesTelemetry(cLat, cLon);
+        };
+        dropdown.appendChild(item);
+      }
+    }
+
+    // 2. Filter districts by name or state
     const matches = allDistrictsData.filter(d => 
       (d.District && d.District.toLowerCase().includes(val)) ||
       (d.State && d.State.toLowerCase().includes(val))
     ).slice(0, 10);
 
-    if (!matches.length) {
+    if (!matches.length && dropdown.children.length === 0) {
       dropdown.innerHTML = `
         <div style="padding: 12px 16px; color: var(--text-muted); font-size: 0.85rem; text-align: center;">
-          No matching districts found for "<b>${input.value}</b>". Try another city or district.
+          No matching districts found for "<b>${input.value}</b>". Try another city, district, or coordinates.
         </div>
       `;
       dropdown.style.display = "block";
       return;
     }
 
-    dropdown.innerHTML = "";
     matches.forEach(m => {
       const item = document.createElement("div");
       item.className = "district-search-item";
@@ -602,7 +679,84 @@ function setupDistrictSearch() {
 }
 
 /**
- * Setup District Live Modal Listeners and Handlers
+ * Reverse-geocodes any coordinates to nearest district and opens live satellite telemetry
+ */
+window.lookupCoordinatesTelemetry = async function(lat, lon) {
+  lat = Number(lat);
+  lon = Number(lon);
+  if (isNaN(lat) || isNaN(lon) || lat < 6.0 || lat > 38.0 || lon < 68.0 || lon > 98.0) {
+    showToast("⚠️ Coordinates must be within India bounds (Lat: 6°-38° N, Lon: 68°-98° E).");
+    return;
+  }
+
+  showToast(`🛰️ Reverse-geocoding (${lat.toFixed(4)}° N, ${lon.toFixed(4)}° E)...`);
+
+  let nearest = null;
+  try {
+    const res = await apiFetch(`/nearest-district?lat=${lat}&lon=${lon}`);
+    if (res.ok) {
+      nearest = await res.json();
+    }
+  } catch (err) {
+    console.warn("Nearest district API offline, computing locally:", err);
+  }
+
+  if (!nearest) {
+    nearest = getNearestDistrictStatic(lat, lon);
+  }
+
+  if (!nearest) {
+    showToast("⚠️ Unable to find nearest Indian climate district node.");
+    return;
+  }
+
+  showToast(`📍 Nearest Station: ${nearest.District}, ${nearest.State} (${nearest.distance_km || 0} km away)`);
+
+  // Sync Selectors
+  const stSelect = document.getElementById("dashboardStateSelect");
+  if (stSelect) {
+    stSelect.value = nearest.State;
+    populateDistrictSelector(nearest.State, "dashboardDistrictSelect", nearest.District);
+  }
+
+  // Open Live Telemetry Modal
+  window.openDistrictDetailModal(nearest.State, nearest.District, lat, lon);
+};
+
+/**
+ * Handles map click event anywhere on India map
+ */
+window.handleMapCoordinateClick = function(lat, lon) {
+  const nearest = getNearestDistrictStatic(lat, lon);
+  const distText = nearest 
+    ? `<b>Nearest District:</b> ${nearest.District}, ${nearest.State} (${nearest.distance_km} km away)`
+    : "Indian Digital Twin Coordinate Node";
+
+  if (indiaMap && typeof L !== "undefined") {
+    L.popup()
+      .setLatLng([lat, lon])
+      .setContent(`
+        <div style="font-family: inherit; font-size: 13px; color: #0f172a; min-width: 190px; padding: 4px 2px;">
+          <div style="font-weight: 800; color: #1e3a8a; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+            <span>🌐</span> <span>Selected Node</span>
+          </div>
+          <div style="font-size: 12px; color: #64748b; margin-bottom: 6px;">
+            Lat: <b>${lat.toFixed(4)}° N</b>, Lon: <b>${lon.toFixed(4)}° E</b>
+          </div>
+          <div style="font-size: 12px; color: #334155; margin-bottom: 10px;">
+            ${distText}
+          </div>
+          <button onclick="window.lookupCoordinatesTelemetry(${lat}, ${lon})" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; border: none; border-radius: 6px; padding: 7px 12px; font-weight: 700; font-size: 11px; cursor: pointer; width: 100%; box-shadow: 0 2px 8px rgba(37,99,235,0.3);">
+            ⚡ Inspect Live Telemetry
+          </button>
+        </div>
+      `)
+      .openOn(indiaMap);
+  }
+};
+
+/**
+ * Setup District Live Modal & Coordinate Handlers
  */
 function setupDistrictModal() {
   const modal = document.getElementById("districtDetailModal");
@@ -633,6 +787,88 @@ function setupDistrictModal() {
     const st = dashSelect ? dashSelect.value : "";
     const dist = distSelect && distSelect.value !== "all" ? distSelect.value : "Lucknow";
     window.openDistrictDetailModal(st === "all" ? "Uttar Pradesh" : st, dist);
+  });
+
+  // GPS Geolocation Button (Current Location)
+  document.getElementById("btnGeoLocation")?.addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      showToast("⚠️ Geolocation is not supported by your browser.");
+      return;
+    }
+    showToast("🛰️ Contacting GPS satellite... Please allow location permission.");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        showToast(`📍 GPS Locked: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`);
+        window.lookupCoordinatesTelemetry(latitude, longitude);
+      },
+      (err) => {
+        console.warn("GPS error:", err);
+        showToast("⚠️ Location permission denied. Click 🌐 Coordinates to input manually.");
+        document.getElementById("btnCustomCoord")?.click();
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  });
+
+  // Coordinates Modal Listeners
+  const coordModal = document.getElementById("coordinateInputModal");
+  document.getElementById("btnCustomCoord")?.addEventListener("click", () => {
+    if (coordModal) coordModal.style.display = "flex";
+  });
+  document.getElementById("btnCloseCoordModal")?.addEventListener("click", () => {
+    if (coordModal) coordModal.style.display = "none";
+  });
+  coordModal?.addEventListener("click", (e) => {
+    if (e.target.id === "coordinateInputModal") coordModal.style.display = "none";
+  });
+
+  // Coordinate Preset Buttons
+  document.querySelectorAll(".btn-preset-coord").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const lat = btn.getAttribute("data-lat");
+      const lon = btn.getAttribute("data-lon");
+      const latInp = document.getElementById("inputCoordLat");
+      const lonInp = document.getElementById("inputCoordLon");
+      if (latInp) latInp.value = lat;
+      if (lonInp) lonInp.value = lon;
+    });
+  });
+
+  // GPS inside Coordinates Modal
+  document.getElementById("btnUseGpsInsideModal")?.addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      showToast("⚠️ Geolocation not supported by your browser.");
+      return;
+    }
+    showToast("🛰️ Acquiring GPS fix...");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const latInp = document.getElementById("inputCoordLat");
+        const lonInp = document.getElementById("inputCoordLon");
+        if (latInp) latInp.value = latitude.toFixed(4);
+        if (lonInp) lonInp.value = longitude.toFixed(4);
+        showToast(`📍 Coordinates filled: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+      },
+      () => {
+        showToast("⚠️ Location access denied.");
+      }
+    );
+  });
+
+  // Submit Coordinates Modal
+  document.getElementById("btnSubmitCoordinates")?.addEventListener("click", () => {
+    const latInp = document.getElementById("inputCoordLat");
+    const lonInp = document.getElementById("inputCoordLon");
+    const lat = parseFloat(latInp ? latInp.value : "");
+    const lon = parseFloat(lonInp ? lonInp.value : "");
+    if (isNaN(lat) || isNaN(lon)) {
+      showToast("⚠️ Please enter valid numeric Latitude and Longitude values.");
+      return;
+    }
+    if (coordModal) coordModal.style.display = "none";
+    window.lookupCoordinatesTelemetry(lat, lon);
   });
 
   // Refresh Live Feed in Modal
@@ -674,6 +910,11 @@ window.openDistrictDetailModal = async function(state, district, lat, lon, force
     (state && d.State && d.State.toLowerCase() === state.toLowerCase())
   );
 
+  // If record not found but lat/lon given, find nearest static district
+  if (!rec && lat && lon) {
+    rec = getNearestDistrictStatic(lat, lon);
+  }
+
   const distTitle = district || (rec ? rec.District : state);
   const stateTitle = state || (rec ? rec.State : "India");
   const targetLat = lat || (rec ? rec.Latitude : 26.8467);
@@ -683,7 +924,18 @@ window.openDistrictDetailModal = async function(state, district, lat, lon, force
 
   // Set modal header & open instantly
   document.getElementById("districtModalTitle").textContent = `${distTitle}, ${stateTitle}`;
-  document.getElementById("districtModalCoords").textContent = `Lat: ${Number(targetLat).toFixed(4)}, Lon: ${Number(targetLon).toFixed(4)} • Digital Twin Node`;
+  document.getElementById("districtModalCoords").textContent = `Lat: ${Number(targetLat).toFixed(4)}° N, Lon: ${Number(targetLon).toFixed(4)}° E • Digital Twin Node`;
+  
+  const distBadge = document.getElementById("districtModalDistanceBadge");
+  if (distBadge) {
+    if (rec && rec.distance_km !== undefined && rec.distance_km > 0) {
+      distBadge.style.display = "block";
+      distBadge.textContent = `📍 Nearest Monitored Station: ${rec.District} (${rec.distance_km} km from target coordinates)`;
+    } else {
+      distBadge.style.display = "none";
+    }
+  }
+
   document.getElementById("districtModalLiveStatus").textContent = "FETCHING LIVE SATELLITE FEED...";
   modal.style.display = "flex";
 
@@ -750,6 +1002,12 @@ window.openDistrictDetailModal = async function(state, district, lat, lon, force
 
     currentDistrictTelemetry = liveData;
 
+    // Nearest district metadata update if available
+    if (distBadge && liveData.nearest_district_meta) {
+      distBadge.style.display = "block";
+      distBadge.textContent = `📍 Nearest Monitored Station: ${liveData.nearest_district_meta.nearest_district} (${liveData.nearest_district_meta.distance_km} km away)`;
+    }
+
     // Update Modal DOM
     document.getElementById("districtModalIcon").textContent = liveData.icon || "☀️";
     document.getElementById("districtModalTemp").textContent = `${liveData.temperature} °C`;
@@ -781,6 +1039,200 @@ window.openDistrictDetailModal = async function(state, district, lat, lon, force
     console.error("Error updating live district modal:", err);
     document.getElementById("districtModalLiveStatus").textContent = "OFFLINE TELEMETRY ARCHIVE";
   }
+};
+
+/**
+ * Setup Web Speech Voice Recognition & Voice Controls
+ */
+function setupVoiceFeatures() {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  function runRecognition(onResult, onStatus) {
+    if (!SpeechRec) {
+      showToast(t("voice_not_supported") || "Voice recognition is not supported in this browser.");
+      return;
+    }
+    try {
+      const rec = new SpeechRec();
+      rec.continuous = false;
+      rec.interimResults = false;
+      const langMap = {
+        hi: "hi-IN",
+        mr: "mr-IN",
+        bn: "bn-IN",
+        ta: "ta-IN",
+        en: "en-IN"
+      };
+      rec.lang = langMap[currentAppLanguage] || "en-IN";
+
+      rec.onstart = () => {
+        if (onStatus) onStatus(true);
+      };
+      rec.onend = () => {
+        if (onStatus) onStatus(false);
+      };
+      rec.onerror = (e) => {
+        if (onStatus) onStatus(false);
+        console.warn("Speech recognition error:", e.error);
+        if (e.error === "not-allowed") {
+          showToast("⚠️ Microphone access denied. Please grant microphone permission.");
+        }
+      };
+      rec.onresult = (e) => {
+        const text = e.results && e.results[0] && e.results[0][0] ? e.results[0][0].transcript : "";
+        if (text && onResult) onResult(text);
+      };
+      rec.start();
+    } catch (err) {
+      console.warn("Speech recognition start failed:", err);
+      if (onStatus) onStatus(false);
+    }
+  }
+
+  // 1. Voice in District Search
+  const btnVoiceSearch = document.getElementById("btnVoiceSearch");
+  if (btnVoiceSearch) {
+    btnVoiceSearch.addEventListener("click", () => {
+      runRecognition(
+        (transcript) => {
+          const input = document.getElementById("districtSearchInput");
+          if (input) {
+            input.value = transcript;
+            input.dispatchEvent(new Event("input"));
+          }
+        },
+        (listening) => {
+          btnVoiceSearch.classList.toggle("listening", listening);
+          if (listening) showToast(t("voice_listening") || "🎤 Listening... speak district name");
+        }
+      );
+    });
+  }
+
+  // 2. Voice in Assistant Page
+  const btnVoiceChat = document.getElementById("btnVoiceChatInput");
+  if (btnVoiceChat) {
+    btnVoiceChat.addEventListener("click", () => {
+      runRecognition(
+        (transcript) => {
+          const chatInput = document.getElementById("assistantChatInput");
+          if (chatInput) chatInput.value = transcript;
+          window.askAssistantQuery(transcript);
+        },
+        (listening) => {
+          btnVoiceChat.classList.toggle("listening", listening);
+          if (listening) showToast(t("voice_listening") || "🎤 Listening... speak query");
+        }
+      );
+    });
+  }
+
+  // 3. Voice in Home Page
+  const btnVoiceHome = document.getElementById("btnVoiceHomeInput");
+  if (btnVoiceHome) {
+    btnVoiceHome.addEventListener("click", () => {
+      runRecognition(
+        (transcript) => {
+          const input = document.getElementById("assistantInput");
+          if (input) input.value = transcript;
+          document.getElementById("btnAskAssistant")?.click();
+        },
+        (listening) => {
+          btnVoiceHome.classList.toggle("listening", listening);
+          if (listening) showToast(t("voice_listening") || "🎤 Listening... speak query");
+        }
+      );
+    });
+  }
+
+  // 4. Prompt Chips: My Location and Coordinates Demo
+  document.getElementById("chipMyLocation")?.addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      window.askAssistantQuery("What is the climate weather at my current location?");
+      return;
+    }
+    showToast("🛰️ Getting GPS fix...");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        window.askAssistantQuery(`weather at ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+      },
+      () => {
+        window.askAssistantQuery("What is the climate weather at my current location?");
+      }
+    );
+  });
+
+  document.getElementById("chipCoordDemo")?.addEventListener("click", () => {
+    window.askAssistantQuery("weather at 28.6139, 77.2090");
+  });
+}
+
+/**
+ * Text-to-Speech Speak & Stop
+ */
+window.speakTextMessage = function(btn) {
+  if (!window.speechSynthesis) {
+    showToast("Text-to-Speech is not supported in this browser.");
+    return;
+  }
+  if (window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+    document.querySelectorAll(".btn-tts").forEach(b => {
+      b.classList.remove("speaking");
+      b.innerHTML = `<span>🔊</span> <span>Read Aloud</span>`;
+    });
+    return;
+  }
+
+  const bubble = btn.closest(".chat-bubble");
+  if (!bubble) return;
+  const clone = bubble.cloneNode(true);
+  const actions = clone.querySelector(".chat-message-actions");
+  if (actions) actions.remove();
+  let cleanText = clone.innerText.replace(/[•\*\#\_]/g, " ").replace(/\s+/g, " ").trim();
+
+  const utterance = new SpeechSynthesisUtterance(cleanText);
+  const langMap = {
+    hi: "hi-IN",
+    mr: "mr-IN",
+    bn: "bn-IN",
+    ta: "ta-IN",
+    en: "en-IN"
+  };
+  utterance.lang = langMap[currentAppLanguage] || "en-IN";
+  utterance.rate = 1.0;
+
+  btn.classList.add("speaking");
+  btn.innerHTML = `<span>⏹️</span> <span>Stop</span>`;
+
+  utterance.onend = () => {
+    btn.classList.remove("speaking");
+    btn.innerHTML = `<span>🔊</span> <span>Read Aloud</span>`;
+  };
+  utterance.onerror = () => {
+    btn.classList.remove("speaking");
+    btn.innerHTML = `<span>🔊</span> <span>Read Aloud</span>`;
+  };
+
+  window.speechSynthesis.speak(utterance);
+};
+
+/**
+ * Copy bot response text
+ */
+window.copyMsgText = function(btn) {
+  const bubble = btn.closest(".chat-bubble");
+  if (!bubble) return;
+  const clone = bubble.cloneNode(true);
+  const actions = clone.querySelector(".chat-message-actions");
+  if (actions) actions.remove();
+  const text = clone.innerText.trim();
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.innerHTML;
+    btn.innerHTML = `<span>✅</span> <span>Copied!</span>`;
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  });
 };
 
 /**
@@ -1147,6 +1599,20 @@ function setupAssistant() {
     const bubbleDiv = document.createElement("div");
     bubbleDiv.className = `chat-bubble ${sender}`;
     bubbleDiv.innerHTML = textHtml;
+
+    if (sender === "bot") {
+      const actionsDiv = document.createElement("div");
+      actionsDiv.className = "chat-message-actions";
+      actionsDiv.innerHTML = `
+        <button class="btn-tts" onclick="window.speakTextMessage(this)" title="Listen to answer aloud (Text-to-Speech)">
+          <span>🔊</span> <span>Read Aloud</span>
+        </button>
+        <button class="btn-copy-msg" onclick="window.copyMsgText(this)" title="Copy response text">
+          <span>📋</span> <span>Copy</span>
+        </button>
+      `;
+      bubbleDiv.appendChild(actionsDiv);
+    }
 
     msgDiv.appendChild(avatarDiv);
     msgDiv.appendChild(bubbleDiv);

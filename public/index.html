@@ -253,18 +253,25 @@
               <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;" data-i18n="app_subtitle">786 Districts across 36 States & UTs with Real-Time Up-to-the-Minute Climate Telemetry</p>
             </div>
             <div class="district-select-group">
-              <div style="min-width: 180px;">
+              <div style="min-width: 170px;">
                 <select id="dashboardStateSelect" class="custom-select" title="Select Indian State or UT">
                   <option value="all">🇮🇳 All States (National View)</option>
                 </select>
               </div>
-              <div style="min-width: 180px;">
+              <div style="min-width: 170px;">
                 <select id="dashboardDistrictSelect" class="custom-select" title="Select Specific District">
                   <option value="all">📍 All Districts</option>
                 </select>
               </div>
-              <button id="btnOpenDistrictDetail" class="btn-primary" style="padding: 9px 16px; font-size: 0.82rem; display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+              <button id="btnOpenDistrictDetail" class="btn-primary" style="padding: 9px 15px; font-size: 0.82rem; display: flex; align-items: center; gap: 6px; white-space: nowrap;">
                 <span>⚡ Live District Intel</span>
+              </button>
+              <button id="btnGeoLocation" class="btn-gps" title="Auto-detect climate at your live GPS location" style="padding: 9px 15px; font-size: 0.82rem; display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+                <span class="pulse-emerald"></span>
+                <span data-i18n="btn_my_location">📍 My Location (GPS)</span>
+              </button>
+              <button id="btnCustomCoord" class="btn-coord" title="Search by Latitude & Longitude Coordinates" style="padding: 9px 14px; font-size: 0.82rem; display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+                <span>🌐 Coordinates</span>
               </button>
             </div>
           </div>
@@ -273,7 +280,8 @@
           <div class="district-search-wrapper">
             <div class="district-search-input-box">
               <span style="font-size: 1.1rem; opacity: 0.8; margin-right: 6px;">🔍</span>
-              <input id="districtSearchInput" type="text" placeholder="Search any District or City in India (e.g. Lucknow, Varanasi, Pune, Patna, Indore, Surat, Jaipur, Shimla...)" autocomplete="off" />
+              <input id="districtSearchInput" type="text" placeholder="Search District, City, or Coordinates (e.g. Lucknow, Pune, 28.61, 77.20)..." autocomplete="off" />
+              <button id="btnVoiceSearch" class="btn-mic-search" title="Voice Search (Speak district, city or coordinates)">🎤</button>
               <button id="btnClearDistrictSearch" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: none; padding: 4px 8px; font-size: 1.1rem;">&times;</button>
             </div>
             <div id="districtSearchDropdown" class="district-search-dropdown"></div>
@@ -344,6 +352,7 @@
           <p style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="assistant_subtitle">Natural language query interface for Indian climate indicators.</p>
           <div class="chat-input-bar">
             <input id="assistantInput" type="text" class="chat-input" placeholder="Ask anything about temperature, rain, AQI, or high-risk states..." data-i18n-placeholder="assistant_placeholder" />
+            <button id="btnVoiceHomeInput" class="btn-voice-input" title="Voice Input (Tap and speak)" style="padding: 8px 12px;">🎤</button>
             <button id="btnAskAssistant" class="btn-primary" data-i18n="ask_button">Ask Assistant</button>
           </div>
           <div id="assistantResponse" class="chat-response-card"></div>
@@ -410,6 +419,8 @@
             <button class="prompt-chip" data-prompt="risk" data-i18n="chip_high_risk">🚨 High Risk States</button>
             <button class="prompt-chip" data-prompt="precautions" data-i18n="chip_precautions">🛡️ Safety Advisory & Tips</button>
             <button class="prompt-chip" data-prompt="summary" data-i18n="chip_summary">📊 National Climate Summary</button>
+            <button class="prompt-chip" data-prompt="gps_here" id="chipMyLocation">📍 Weather At My GPS Location</button>
+            <button class="prompt-chip" data-prompt="coord_demo" id="chipCoordDemo">🌐 Check Coordinates (28.61, 77.20)</button>
           </div>
 
           <!-- State Weather Quick Select -->
@@ -439,7 +450,10 @@
 
           <!-- Chat Input Bar -->
           <div class="chat-input-container" style="margin-top: 16px;">
-            <input id="assistantChatInput" type="text" class="chat-input" placeholder="Type your query in English, Hindi, Hinglish, Marathi, Bengali, or Tamil..." data-i18n-placeholder="chat_input_placeholder" />
+            <input id="assistantChatInput" type="text" class="chat-input" placeholder="Type your query or tap mic to speak in English, Hindi, Hinglish, Marathi, Bengali, Tamil..." data-i18n-placeholder="chat_input_placeholder" />
+            <button id="btnVoiceChatInput" class="btn-voice-input" title="Voice Input (Speak your query in any language)">
+              <span class="mic-icon">🎤</span>
+            </button>
             <button id="btnSendChat" class="btn-primary" data-i18n="btn_send">Send Message</button>
             <button id="btnClearChat" class="btn-secondary" data-i18n="btn_clear_chat">Clear Chat</button>
           </div>
@@ -736,6 +750,7 @@
             <h3 id="districtModalTitle" style="font-size: 1.35rem; font-weight: 800; color: #fff; margin: 0;">Lucknow, Uttar Pradesh</h3>
           </div>
           <div id="districtModalCoords" style="font-size: 0.8rem; color: var(--text-muted);">Lat: 26.8467, Lon: 80.9462 • Digital Twin Grid Node</div>
+          <div id="districtModalDistanceBadge" style="display: none; font-size: 0.78rem; color: #34d399; margin-top: 3px; font-weight: 600;"></div>
         </div>
         <button id="btnDistrictModalClose" class="modal-close-btn" aria-label="Close modal">&times;</button>
       </div>
@@ -819,6 +834,66 @@
         <button id="btnDistrictModalCloseFooter" class="btn-primary" style="background: rgba(255,255,255,0.08); color: #fff; font-size: 0.82rem; padding: 8px 14px;">
           Close
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== COORDINATES LOOKUP MODAL ==================== -->
+  <div id="coordinateInputModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card" style="max-width: 580px;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+        <div>
+          <span class="badge-live-mini" style="background: rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.5); color: #60a5fa; margin-bottom: 6px;">🌐 GEOSPATIAL NODE LOOKUP</span>
+          <h3 style="font-size: 1.25rem; font-weight: 800; color: #fff; margin: 4px 0;">Query Climate Telemetry by Coordinates</h3>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin: 4px 0 0;">
+            Input any Indian latitude & longitude coordinates. ClimateTwin AI reverse-geocodes to the nearest monitored district station.
+          </p>
+        </div>
+        <button id="btnCloseCoordModal" class="modal-close-btn" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 12px 0 16px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+          <div>
+            <label style="font-size: 0.76rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 6px;">
+              Latitude (°N) [6.0° to 38.0°]
+            </label>
+            <input id="inputCoordLat" type="number" step="0.0001" placeholder="e.g. 28.6139" class="custom-select" style="width: 100%; padding: 10px 14px; font-size: 0.95rem;" />
+          </div>
+          <div>
+            <label style="font-size: 0.76rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 6px;">
+              Longitude (°E) [68.0° to 98.0°]
+            </label>
+            <input id="inputCoordLon" type="number" step="0.0001" placeholder="e.g. 77.2090" class="custom-select" style="width: 100%; padding: 10px 14px; font-size: 0.95rem;" />
+          </div>
+        </div>
+
+        <div style="margin-bottom: 18px;">
+          <div style="font-size: 0.76rem; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase;">
+            Quick Presets (Click to autofill):
+          </div>
+          <div class="coord-presets-list" style="display: flex; flex-wrap: wrap; gap: 6px;">
+            <button class="btn-preset-coord" data-lat="28.6139" data-lon="77.2090">🏛️ Delhi (28.61, 77.21)</button>
+            <button class="btn-preset-coord" data-lat="19.0760" data-lon="72.8777">🌊 Mumbai (19.08, 72.88)</button>
+            <button class="btn-preset-coord" data-lat="12.9716" data-lon="77.5946">💻 Bengaluru (12.97, 77.59)</button>
+            <button class="btn-preset-coord" data-lat="22.5726" data-lon="88.3639">🌉 Kolkata (22.57, 88.36)</button>
+            <button class="btn-preset-coord" data-lat="13.0827" data-lon="80.2707">🏖️ Chennai (13.08, 80.27)</button>
+            <button class="btn-preset-coord" data-lat="26.8467" data-lon="80.9462">🕌 Lucknow (26.85, 80.95)</button>
+            <button class="btn-preset-coord" data-lat="26.9124" data-lon="75.7873">🏰 Jaipur (26.91, 75.79)</button>
+            <button class="btn-preset-coord" data-lat="34.0837" data-lon="74.7973">🏔️ Srinagar (34.08, 74.80)</button>
+          </div>
+        </div>
+
+        <div id="coordLookupStatus" style="display: none; padding: 10px 14px; border-radius: 8px; background: rgba(37, 99, 235, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.85rem; color: #93c5fd; margin-bottom: 16px;"></div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+          <button id="btnUseGpsInsideModal" class="btn-secondary" style="display: flex; align-items: center; gap: 6px; padding: 9px 14px;">
+            <span class="pulse-emerald"></span> <span>📍 Fill GPS Location</span>
+          </button>
+          <button id="btnSubmitCoordinates" class="btn-primary" style="display: flex; align-items: center; gap: 6px; padding: 9px 16px;">
+            <span>⚡ Inspect Live Climate Telemetry</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
